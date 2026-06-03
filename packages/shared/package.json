@@ -1,0 +1,10 @@
+{
+  "name": "@veyra/shared",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "build": "echo \"No build needed for shared package yet\""
+  }
+}
