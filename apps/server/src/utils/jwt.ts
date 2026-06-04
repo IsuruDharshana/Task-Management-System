@@ -1,6 +1,6 @@
 import jwt, { type SignOptions } from "jsonwebtoken";
-import { AppError } from "./appError";
-import type { UserRole } from "../types/auth";
+import { AppError } from "./appError.js";
+import type { UserRole } from "../types/auth.js";
 
 const allowedRoles: UserRole[] = ["admin", "project_manager", "collaborator"];
 
