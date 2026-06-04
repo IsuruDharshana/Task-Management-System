@@ -4,11 +4,12 @@
   "description": "Veyra Task Management System backend API",
   "main": "dist/server.js",
   "scripts": {
-  "dev": "tsx watch src/server.ts",
-  "build": "tsc",
-  "start": "node dist/server.js",
-  "test": "echo \"No tests configured yet\""
-},
+    "dev": "tsx watch src/server.ts",
+    "seed:admin": "tsx src/scripts/seedAdmin.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "test": "echo \"No tests configured yet\""
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
