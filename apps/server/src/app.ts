@@ -3,8 +3,12 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import { env } from "./config/env.js";
 import { supabase } from "./config/supabase.js";
+import authRoutes from "./routes/authRoutes.js";
+import { errorHandler } from "./middlewares/errorHandler.js";
 
 const app = express();
+
+const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
 
 app.use(
   cors({
@@ -41,5 +45,9 @@ app.get("/api/health/db", async (_req, res) => {
     message: "Database connection successful",
   });
 });
+
+app.use("/api/auth", authRoutes);
+
+app.use(errorHandler);
 
 export default app;
