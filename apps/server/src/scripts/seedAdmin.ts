@@ -1,6 +1,6 @@
 import "dotenv/config";
 import bcrypt from "bcryptjs";
-import { supabaseAdmin } from "../config/supabaseAdmin";
+import { supabaseAdmin } from "../config/supabaseAdmin.js";
 
 type UserRole = "admin" | "project_manager" | "collaborator";
 
