@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
-import { AppError } from "../utils/appError";
-import type { UserRole } from "../types/auth";
+import { AppError } from "../utils/appError.js";
+import type { UserRole } from "../types/auth.js";
 
 export function requireRoles(...allowedRoles: UserRole[]) {
   return (req: Request, _res: Response, next: NextFunction) => {

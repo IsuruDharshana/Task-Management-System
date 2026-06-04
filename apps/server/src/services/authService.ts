@@ -2,7 +2,7 @@ import { supabaseAdmin } from "../config/supabaseAdmin.js";
 import { AppError } from "../utils/appError.js";
 import { hashPassword, validatePasswordPolicy, verifyPassword } from "../utils/password.js";
 import { signAccessToken } from "../utils/jwt.js";
-import type { AuthUser, UserRole } from "../types/auth.ts";
+import type { AuthUser, UserRole } from "../types/auth.js";
 
 interface AppUserRow {
   id: string;
