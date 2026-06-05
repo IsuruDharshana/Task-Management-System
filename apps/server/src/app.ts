@@ -5,6 +5,7 @@ import { env } from "./config/env.js";
 import { supabase } from "./config/supabase.js";
 import adminUserRoutes from "./routes/adminUserRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
+import projectRoutes from "./routes/projectRoutes.js";
 import { errorHandler } from "./middlewares/errorHandler.js";
 
 const app = express();
@@ -47,6 +48,7 @@ app.get("/api/health/db", async (_req, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/admin/users", adminUserRoutes);
+app.use("/api/projects", projectRoutes);
 
 app.use(errorHandler);
 
