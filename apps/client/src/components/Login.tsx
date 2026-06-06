@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import { api, APIError } from "../services/api";
+import type { User } from "../services/api";
 
 interface LoginProps {
-  onLoginSuccess: (user: any) => void;
+  onLoginSuccess: (user: User) => void;
 }
 
 export default function Login({ onLoginSuccess }: LoginProps) {
