@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { api, APIError } from "./services/api";
+import { api } from "./services/api";
 import type { User } from "./services/api";
 import { RouterProvider, useRouter, useRouteMatch } from "./components/Router";
 import Login from "./components/Login";
@@ -7,22 +7,20 @@ import ProjectsList from "./components/ProjectsList";
 import CreateProject from "./components/CreateProject";
 import ProjectDetails from "./components/ProjectDetails";
 import AdminPanel from "./components/AdminPanel";
+import FirstLoginPasswordResetPage from "./components/FirstLoginPasswordResetPage";
+import SettingsPage from "./components/SettingsPage";
 import "./App.css";
+
+function getHomePath(user: User): string {
+  if (user.role === "admin") return "/admin";
+  return "/projects";
+}
 
 function AppContent() {
   const { path, navigate } = useRouter();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
-
-  // Password reset state (if user needs password reset)
-  const [showResetForm, setShowResetForm] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [resetError, setResetError] = useState<string | null>(null);
-  const [resetSuccess, setResetSuccess] = useState<string | null>(null);
-  const [resetting, setResetting] = useState(false);
 
   // Check auth status on load
   useEffect(() => {
@@ -54,40 +52,15 @@ function AppContent() {
     }
   };
 
-  // Handle password reset submission
-  const handleResetPasswordSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setResetError(null);
-    setResetSuccess(null);
+  const handleLoginSuccess = (user: User) => {
+    setCurrentUser(user);
+    navigate(user.mustResetPassword ? "/first-login-password-reset" : getHomePath(user));
+  };
 
-    if (newPassword !== confirmPassword) {
-      setResetError("New passwords do not match.");
-      return;
-    }
-
-    setResetting(true);
-    try {
-      const result = await api.auth.resetPassword(currentPassword, newPassword);
-      setResetSuccess("Password reset successfully! You can now close this panel.");
-      
-      // Update local state since password reset returns updated user
-      setCurrentUser({
-        ...result.user,
-        mustResetPassword: false,
-      });
-      
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-    } catch (err: any) {
-      if (err instanceof APIError) {
-        setResetError(err.message);
-      } else {
-        setResetError("Failed to reset password. Please verify current password.");
-      }
-    } finally {
-      setResetting(false);
-    }
+  const handlePasswordChanged = (user: User) => {
+    const updatedUser = { ...user, mustResetPassword: false };
+    setCurrentUser(updatedUser);
+    navigate(getHomePath(updatedUser));
   };
 
   // Route matches
@@ -95,15 +68,12 @@ function AppContent() {
   const matchCreateProject = useRouteMatch("/projects/new");
   const matchProjectDetails = useRouteMatch("/projects/:projectId");
   const matchAdmin = useRouteMatch("/admin");
+  const matchSettings = useRouteMatch("/settings");
 
   // Redirect to correct dashboard based on role on default root path '/'
   useEffect(() => {
     if (authChecked && currentUser && path === "/") {
-      if (currentUser.role === "admin") {
-        navigate("/admin");
-      } else {
-        navigate("/projects");
-      }
+      navigate(currentUser.mustResetPassword ? "/first-login-password-reset" : getHomePath(currentUser));
     }
   }, [authChecked, currentUser, path]);
 
@@ -118,7 +88,17 @@ function AppContent() {
 
   // Not authenticated? Show login screen
   if (!currentUser) {
-    return <Login onLoginSuccess={setCurrentUser} />;
+    return <Login onLoginSuccess={handleLoginSuccess} />;
+  }
+
+  if (currentUser.mustResetPassword) {
+    return (
+      <FirstLoginPasswordResetPage
+        currentUser={currentUser}
+        onPasswordChanged={handlePasswordChanged}
+        onLogout={handleLogout}
+      />
+    );
   }
 
   // Render main routing switch
@@ -157,6 +137,10 @@ function AppContent() {
         );
       }
       return <AdminPanel />;
+    }
+
+    if (matchSettings.matches) {
+      return <SettingsPage currentUser={currentUser} onUserUpdated={setCurrentUser} />;
     }
 
     // fallback 404
@@ -200,6 +184,12 @@ function AppContent() {
               Admin Workspace
             </button>
           )}
+          <button
+            onClick={() => navigate("/settings")}
+            className={`nav-item ${path === "/settings" ? "active" : ""}`}
+          >
+            Settings
+          </button>
         </nav>
 
         <div className="nav-profile">
@@ -215,87 +205,6 @@ function AppContent() {
 
       {/* Main Content Area */}
       <main className="app-main-content">
-        {/* Force password reset notification banner */}
-        {currentUser.mustResetPassword && (
-          <div className="password-reset-banner">
-            <div className="banner-content">
-              <span className="banner-icon">*</span>
-              <div>
-                <strong>Security Alert:</strong> You are currently using a temporary password. For safety, please update it.
-              </div>
-              <button 
-                onClick={() => setShowResetForm(!showResetForm)} 
-                className="btn btn-primary btn-sm banner-action-btn"
-              >
-                {showResetForm ? "Hide Form" : "Change Password Now"}
-              </button>
-            </div>
-
-            {showResetForm && (
-              <form onSubmit={handleResetPasswordSubmit} className="banner-reset-form card">
-                <h3>Update Password</h3>
-                {resetError && <div className="alert alert-danger">{resetError}</div>}
-                {resetSuccess && <div className="alert alert-success">{resetSuccess}</div>}
-
-                <div className="form-group">
-                  <label htmlFor="curr-pwd">Current Password</label>
-                  <input
-                    id="curr-pwd"
-                    type="password"
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    required
-                    disabled={resetting}
-                  />
-                </div>
-
-                <div className="form-row">
-                  <div className="form-group">
-                    <label htmlFor="new-pwd">New Password</label>
-                    <input
-                      id="new-pwd"
-                      type="password"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      required
-                      disabled={resetting}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label htmlFor="conf-pwd">Confirm New Password</label>
-                    <input
-                      id="conf-pwd"
-                      type="password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      required
-                      disabled={resetting}
-                    />
-                  </div>
-                </div>
-
-                <div className="inline-edit-actions">
-                  <button 
-                    type="button" 
-                    className="btn btn-secondary btn-sm"
-                    onClick={() => setShowResetForm(false)}
-                    disabled={resetting}
-                  >
-                    Close
-                  </button>
-                  <button 
-                    type="submit" 
-                    className="btn btn-primary btn-sm"
-                    disabled={resetting}
-                  >
-                    {resetting ? "Updating..." : "Update Password"}
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
-        )}
-
         {renderRoute()}
       </main>
 

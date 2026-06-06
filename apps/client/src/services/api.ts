@@ -92,6 +92,20 @@ export interface EligibleMember {
   role: "project_manager" | "collaborator";
 }
 
+export interface AdminUser {
+  id: string;
+  name: string;
+  email: string;
+  role: "admin" | "project_manager" | "collaborator";
+  isActive: boolean;
+  mustResetPassword: boolean;
+  tokenVersion?: number;
+  lastLoginAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+  deletedAt?: string | null;
+}
+
 export const api = {
   auth: {
     async me(): Promise<{ user: User }> {
@@ -111,6 +125,12 @@ export const api = {
     async resetPassword(currentPassword: string, newPassword: string): Promise<{ user: User }> {
       return request("/auth/reset-password", {
         method: "POST",
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+    },
+    async changePassword(currentPassword: string, newPassword: string): Promise<{ user: User }> {
+      return request("/auth/change-password", {
+        method: "PATCH",
         body: JSON.stringify({ currentPassword, newPassword }),
       });
     },
@@ -200,15 +220,39 @@ export const api = {
   },
 
   admin: {
-    async listUsers(params?: { search?: string; role?: string; status?: string }): Promise<{ users: any[] }> {
+    async listUsers(params?: { search?: string; role?: string; status?: string }): Promise<{ users: AdminUser[] }> {
       const query = new URLSearchParams(params as any).toString();
       const path = `/admin/users${query ? `?${query}` : ""}`;
       return request(path);
     },
-    async createUser(data: { name: string; email: string; role: "project_manager" | "collaborator" }): Promise<{ user: any; temporaryPassword: string }> {
+    async createUser(data: { name: string; email: string; role: "project_manager" | "collaborator" }): Promise<{ user: AdminUser; temporaryPassword: string }> {
       return request("/admin/users", {
         method: "POST",
         body: JSON.stringify(data),
+      });
+    },
+    async updateUser(
+      userId: string,
+      data: { name?: string; email?: string; role?: "project_manager" | "collaborator" }
+    ): Promise<{ user: AdminUser }> {
+      return request(`/admin/users/${userId}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      });
+    },
+    async deactivateUser(userId: string): Promise<{ user: AdminUser }> {
+      return request(`/admin/users/${userId}/deactivate`, {
+        method: "PATCH",
+      });
+    },
+    async reactivateUser(userId: string): Promise<{ user: AdminUser }> {
+      return request(`/admin/users/${userId}/reactivate`, {
+        method: "PATCH",
+      });
+    },
+    async resetUserPassword(userId: string): Promise<{ user: AdminUser; temporaryPassword: string }> {
+      return request(`/admin/users/${userId}/reset-password`, {
+        method: "PATCH",
       });
     },
   },
