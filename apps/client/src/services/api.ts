@@ -225,7 +225,7 @@ export const api = {
       const path = `/admin/users${query ? `?${query}` : ""}`;
       return request(path);
     },
-    async createUser(data: { name: string; email: string; role: "project_manager" | "collaborator" }): Promise<{ user: AdminUser; temporaryPassword: string }> {
+    async createUser(data: { name: string; email: string; role: "project_manager" | "collaborator" }): Promise<{ user: AdminUser }> {
       return request("/admin/users", {
         method: "POST",
         body: JSON.stringify(data),
@@ -250,7 +250,7 @@ export const api = {
         method: "PATCH",
       });
     },
-    async resetUserPassword(userId: string): Promise<{ user: AdminUser; temporaryPassword: string }> {
+    async resetUserPassword(userId: string): Promise<{ user: AdminUser }> {
       return request(`/admin/users/${userId}/reset-password`, {
         method: "PATCH",
       });

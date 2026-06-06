@@ -23,7 +23,7 @@ export default function AdminPanel() {
   const [createError, setCreateError] = useState<string | null>(null);
   
   // Successful creation payload
-  const [createdUserPayload, setCreatedUserPayload] = useState<{ user: AdminUser; temporaryPassword: string } | null>(null);
+  const [createdUserPayload, setCreatedUserPayload] = useState<{ user: AdminUser } | null>(null);
 
   // Edit/action modal state
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
@@ -34,7 +34,6 @@ export default function AdminPanel() {
   const [editError, setEditError] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
   const [confirmingAction, setConfirmingAction] = useState(false);
-  const [resetPasswordPayload, setResetPasswordPayload] = useState<{ user: AdminUser; temporaryPassword: string } | null>(null);
 
   const updateUserInList = (updatedUser: AdminUser) => {
     setUsers((currentUsers) =>
@@ -161,8 +160,7 @@ export default function AdminPanel() {
       if (confirmAction.type === "reset-password") {
         const result = await api.admin.resetUserPassword(confirmAction.user.id);
         updateUserInList(result.user);
-        setResetPasswordPayload(result);
-        setActionMessage("User password reset successfully.");
+        setActionMessage("Password reset successfully. Reset instructions were sent through the configured email channel.");
       }
 
       setConfirmAction(null);
@@ -174,15 +172,6 @@ export default function AdminPanel() {
       }
     } finally {
       setConfirmingAction(false);
-    }
-  };
-
-  const copyTemporaryPassword = async (temporaryPassword: string) => {
-    try {
-      await navigator.clipboard.writeText(temporaryPassword);
-      setActionMessage("Temporary password copied to clipboard.");
-    } catch (err) {
-      setActionError("Could not copy password. Please copy it manually.");
     }
   };
 
@@ -291,20 +280,13 @@ export default function AdminPanel() {
           {createdUserPayload && (
             <div className="alert alert-success created-credentials-box">
               <h3>User Created Successfully!</h3>
-              <p>Please share these credentials with the user for logging in:</p>
+              <p>User created successfully. Onboarding details were sent through the configured email channel.</p>
               
               <div className="credential-row">
                 <strong>Email:</strong> <code>{createdUserPayload.user.email}</code>
               </div>
               <div className="credential-row">
                 <strong>Role:</strong> <span className="badge badge-accent">{createdUserPayload.user.role}</span>
-              </div>
-              <div className="credential-row">
-                <strong>Temporary Password:</strong> <code className="temp-pw">{createdUserPayload.temporaryPassword}</code>
-              </div>
-              
-              <div className="alert alert-warning password-warning">
-                Warning: Make sure to copy this password now. It will not be shown again.
               </div>
               
               <button 
@@ -510,42 +492,6 @@ export default function AdminPanel() {
                 disabled={confirmingAction}
               >
                 {confirmingAction ? "Working..." : "Confirm"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {resetPasswordPayload && (
-        <div className="modal-backdrop" role="presentation">
-          <div className="modal-card" role="dialog" aria-modal="true" aria-labelledby="reset-password-title">
-            <h2 id="reset-password-title">Temporary Password</h2>
-            <p className="card-desc">
-              Share this password with {resetPasswordPayload.user.name}. It is shown only once.
-            </p>
-
-            <div className="temporary-password-box">
-              <code>{resetPasswordPayload.temporaryPassword}</code>
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm"
-                onClick={() => copyTemporaryPassword(resetPasswordPayload.temporaryPassword)}
-              >
-                Copy
-              </button>
-            </div>
-
-            <div className="alert alert-warning password-warning">
-              The user must change this password on next login. This password is not stored in the browser after you close this modal.
-            </div>
-
-            <div className="form-actions">
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={() => setResetPasswordPayload(null)}
-              >
-                Done
               </button>
             </div>
           </div>

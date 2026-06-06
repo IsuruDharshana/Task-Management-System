@@ -1,4 +1,6 @@
 import { supabaseAdmin } from "../config/supabaseAdmin.js";
+import { env } from "../config/env.js";
+import { sendPasswordResetEmail, sendUserOnboardingEmail } from "./emailService.js";
 import type { UserRole } from "../types/auth.js";
 import { AppError } from "../utils/appError.js";
 import { generateTemporaryPassword, hashPassword } from "../utils/password.js";
@@ -234,7 +236,7 @@ export async function getUserByIdForAdmin(userId: string): Promise<AdminUser> {
   return mapUser(user);
 }
 
-export async function createUserByAdmin(input: CreateUserInput) {
+export async function createUserByAdmin(input: CreateUserInput): Promise<{ user: AdminUser }> {
   const name = normalizeName(input.name);
   const email = normalizeEmail(input.email);
   const role = normalizeCreatableRole(input.role);
@@ -266,9 +268,22 @@ export async function createUserByAdmin(input: CreateUserInput) {
     throw new AppError(500, "USER_CREATE_FAILED", "Failed to create user.");
   }
 
+  const user = mapUser(data as AppUserRow);
+  const loginUrl = `${env.clientUrl}/login`;
+
+  try {
+    await sendUserOnboardingEmail({
+      to: user.email,
+      name: user.name,
+      temporaryPassword,
+      loginUrl,
+    });
+  } catch (emailError) {
+    console.error("Failed to print Veyra development onboarding email.", emailError);
+  }
+
   return {
-    user: mapUser(data as AppUserRow),
-    temporaryPassword,
+    user,
   };
 }
 
@@ -372,7 +387,10 @@ export async function reactivateUserByAdmin(userId: string): Promise<AdminUser> 
   return mapUser(data as AppUserRow);
 }
 
-export async function resetUserPasswordByAdmin(userId: string, adminUserId: string) {
+export async function resetUserPasswordByAdmin(
+  userId: string,
+  adminUserId: string
+): Promise<{ user: AdminUser }> {
   assertNotSelf(
     userId,
     adminUserId,
@@ -401,8 +419,21 @@ export async function resetUserPasswordByAdmin(userId: string, adminUserId: stri
     throw new AppError(500, "PASSWORD_RESET_FAILED", "Failed to reset user password.");
   }
 
+  const user = mapUser(data as AppUserRow);
+  const loginUrl = `${env.clientUrl}/login`;
+
+  try {
+    await sendPasswordResetEmail({
+      to: user.email,
+      name: user.name,
+      temporaryPassword,
+      loginUrl,
+    });
+  } catch (emailError) {
+    console.error("Failed to print Veyra development password reset email.", emailError);
+  }
+
   return {
-    user: mapUser(data as AppUserRow),
-    temporaryPassword,
+    user,
   };
 }
