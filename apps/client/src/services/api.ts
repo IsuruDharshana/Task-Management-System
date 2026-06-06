@@ -85,6 +85,13 @@ export interface Member {
   updatedAt: string;
 }
 
+export interface EligibleMember {
+  id: string;
+  name: string;
+  email: string;
+  role: "project_manager" | "collaborator";
+}
+
 export const api = {
   auth: {
     async me(): Promise<{ user: User }> {
@@ -115,6 +122,9 @@ export const api = {
     },
     async get(projectId: string): Promise<{ project: Project }> {
       return request(`/projects/${projectId}`);
+    },
+    async listEligibleMembers(projectId: string): Promise<{ users: EligibleMember[] }> {
+      return request(`/projects/${projectId}/eligible-members`);
     },
     async create(data: {
       name: string;

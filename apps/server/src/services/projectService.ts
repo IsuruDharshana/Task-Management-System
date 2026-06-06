@@ -38,6 +38,13 @@ interface MemberWithUserRow extends MemberRow {
   user: { id: string; name: string; email: string; role: string };
 }
 
+interface EligibleUserRow {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+}
+
 // DTOs
 
 export interface ProjectDTO {
@@ -64,6 +71,13 @@ export interface MemberDTO {
   addedBy: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface EligibleMemberDTO {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
 }
 
 // Mappers
@@ -95,6 +109,15 @@ function mapMember(row: MemberWithUserRow): MemberDTO {
     addedBy: row.added_by,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+  };
+}
+
+function mapEligibleMember(row: EligibleUserRow): EligibleMemberDTO {
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    role: row.role,
   };
 }
 
@@ -532,6 +555,40 @@ export async function listMembers(projectId: string, user: AuthUser): Promise<Me
   }
 
   return ((data ?? []) as unknown as MemberWithUserRow[]).map(mapMember);
+}
+
+export async function listEligibleMembers(projectId: string, user: AuthUser): Promise<EligibleMemberDTO[]> {
+  requireNonAdmin(user);
+  await getActiveProject(projectId);
+  await requireProjectManagerForProject(projectId, user.id);
+
+  const { data: activeMembers, error: memberError } = await supabaseAdmin
+    .from("project_members")
+    .select("user_id")
+    .eq("project_id", projectId)
+    .is("removed_at", null);
+
+  if (memberError) {
+    throw new AppError(500, "DATABASE_ERROR", "Failed to load project members.");
+  }
+
+  const activeMemberIds = new Set((activeMembers ?? []).map((member) => member.user_id));
+
+  const { data, error } = await supabaseAdmin
+    .from("app_users")
+    .select("id, name, email, role")
+    .eq("is_active", true)
+    .is("deleted_at", null)
+    .neq("role", "admin")
+    .order("name", { ascending: true });
+
+  if (error) {
+    throw new AppError(500, "DATABASE_ERROR", "Failed to load eligible users.");
+  }
+
+  return ((data ?? []) as EligibleUserRow[])
+    .filter((eligibleUser) => !activeMemberIds.has(eligibleUser.id))
+    .map(mapEligibleMember);
 }
 
 interface AddMemberInput {

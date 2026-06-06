@@ -6,6 +6,7 @@ import {
   updateProject,
   deleteProject,
   listMembers,
+  listEligibleMembers,
   addMember,
   updateMember,
   removeMember,
@@ -109,6 +110,17 @@ export async function handleListMembers(req: Request, res: Response): Promise<vo
   res.status(200).json({
     success: true,
     data: { members },
+  });
+}
+
+export async function handleListEligibleMembers(req: Request, res: Response): Promise<void> {
+  const user = getAuthenticatedUser(req);
+  const projectId = getProjectIdParam(req);
+  const users = await listEligibleMembers(projectId, user);
+
+  res.status(200).json({
+    success: true,
+    data: { users },
   });
 }
 

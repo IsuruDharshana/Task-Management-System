@@ -6,6 +6,7 @@ import {
   handleUpdateProject,
   handleDeleteProject,
   handleListMembers,
+  handleListEligibleMembers,
   handleAddMember,
   handleUpdateMember,
   handleRemoveMember,
@@ -28,6 +29,7 @@ router.patch("/:projectId", asyncHandler(handleUpdateProject));
 router.delete("/:projectId", asyncHandler(handleDeleteProject));
 
 // Member routes
+router.get("/:projectId/eligible-members", asyncHandler(handleListEligibleMembers));
 router.get("/:projectId/members", asyncHandler(handleListMembers));
 router.post("/:projectId/members", asyncHandler(handleAddMember));
 router.patch("/:projectId/members/:memberId", asyncHandler(handleUpdateMember));

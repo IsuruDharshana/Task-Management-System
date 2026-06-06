@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { api, APIError } from "../services/api";
-import type { Project, Member, User } from "../services/api";
+import type { Project, Member, User, EligibleMember } from "../services/api";
 import { useRouter } from "./Router";
 
 interface ProjectDetailsProps {
@@ -14,6 +14,7 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
   // Project state
   const [project, setProject] = useState<Project | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
+  const [eligibleUsers, setEligibleUsers] = useState<EligibleMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,9 +47,18 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
       setError(null);
       const projectData = await api.projects.get(projectId);
       const membersData = await api.members.list(projectId);
+      const loadedMembers = membersData.members || [];
 
       setProject(projectData.project);
-      setMembers(membersData.members || []);
+      setMembers(loadedMembers);
+
+      const loadedCurrentMember = loadedMembers.find((member) => member.userId === currentUser.id);
+      if (loadedCurrentMember?.projectRole === "project_manager") {
+        const eligibleData = await api.projects.listEligibleMembers(projectId);
+        setEligibleUsers(eligibleData.users || []);
+      } else {
+        setEligibleUsers([]);
+      }
 
       // Populate edit form initial values
       setEditName(projectData.project.name);
@@ -65,7 +75,7 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
 
   useEffect(() => {
     fetchData();
-  }, [projectId]);
+  }, [projectId, currentUser.id]);
 
   if (loading) {
     return (
@@ -96,6 +106,16 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
   // Find if current user is a project manager of this project
   const currentMember = members.find((m) => m.userId === currentUser.id);
   const isProjectPM = currentMember?.projectRole === "project_manager";
+  const selectedEligibleUser = eligibleUsers.find((user) => user.id === addUserId);
+  const selectedUserIsCollaborator = selectedEligibleUser?.role === "collaborator";
+
+  const refreshMemberManagement = async () => {
+    const membersData = await api.members.list(projectId);
+    const eligibleData = await api.projects.listEligibleMembers(projectId);
+
+    setMembers(membersData.members || []);
+    setEligibleUsers(eligibleData.users || []);
+  };
 
   // Handlers for Project CRUD
   const handleUpdateProject = async (e: React.FormEvent) => {
@@ -145,11 +165,22 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
     setMemberActionError(null);
+
+    if (!addUserId) {
+      setMemberActionError("Please select a user to add.");
+      return;
+    }
+
+    if (selectedUserIsCollaborator && addRole === "project_manager") {
+      setMemberActionError("Global collaborators cannot be added as project managers.");
+      return;
+    }
+
     setAddingMember(true);
 
     try {
       await api.members.add(projectId, {
-        user_id: addUserId.trim(),
+        user_id: addUserId,
         project_role: addRole,
         project_label: addLabel.trim() || null,
       });
@@ -158,9 +189,8 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
       setAddLabel("");
       setAddRole("collaborator");
 
-      // Refresh members list
-      const membersData = await api.members.list(projectId);
-      setMembers(membersData.members || []);
+      // Refresh members and eligible users
+      await refreshMemberManagement();
     } catch (err: any) {
       if (err instanceof APIError) {
         setMemberActionError(err.message);
@@ -493,20 +523,36 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
           {isProjectPM && (
             <div className="card add-member-card">
               <h2>Add Project Member</h2>
-              <p className="card-desc">Add a registered user by their UUID.</p>
+              <p className="card-desc">Add an eligible registered user to this project.</p>
 
               <form onSubmit={handleAddMember} className="add-member-form">
                 <div className="form-group">
-                  <label htmlFor="add-user-id">User ID (UUID) <span className="required">*</span></label>
-                  <input
+                  <label htmlFor="add-user-id">User <span className="required">*</span></label>
+                  <select
                     id="add-user-id"
-                    type="text"
-                    placeholder="e.g., 123e4567-e89b-12d3-a456-426614174000"
                     value={addUserId}
-                    onChange={(e) => setAddUserId(e.target.value)}
+                    onChange={(e) => {
+                      const nextUserId = e.target.value;
+                      const nextUser = eligibleUsers.find((user) => user.id === nextUserId);
+
+                      setAddUserId(nextUserId);
+                      if (nextUser?.role === "collaborator") {
+                        setAddRole("collaborator");
+                      }
+                    }}
                     required
-                    disabled={addingMember}
-                  />
+                    disabled={addingMember || eligibleUsers.length === 0}
+                  >
+                    <option value="">Select a user</option>
+                    {eligibleUsers.map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {user.name} — {user.email} — {user.role}
+                      </option>
+                    ))}
+                  </select>
+                  {eligibleUsers.length === 0 && (
+                    <p className="form-help">No eligible users available to add.</p>
+                  )}
                 </div>
 
                 <div className="form-group">
@@ -518,8 +564,13 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
                     disabled={addingMember}
                   >
                     <option value="collaborator">Collaborator</option>
-                    <option value="project_manager">Project Manager</option>
+                    <option value="project_manager" disabled={selectedUserIsCollaborator}>
+                      Project Manager
+                    </option>
                   </select>
+                  {selectedUserIsCollaborator && (
+                    <p className="form-help">Global collaborators can only be added as collaborators.</p>
+                  )}
                 </div>
 
                 <div className="form-group">
@@ -535,7 +586,11 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
                   />
                 </div>
 
-                <button type="submit" className="btn btn-primary btn-block" disabled={addingMember}>
+                <button
+                  type="submit"
+                  className="btn btn-primary btn-block"
+                  disabled={addingMember || eligibleUsers.length === 0}
+                >
                   {addingMember ? <span className="spinner"></span> : "Add Member"}
                 </button>
               </form>
