@@ -6,6 +6,7 @@ import { supabase } from "./config/supabase.js";
 import adminUserRoutes from "./routes/adminUserRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import projectRoutes from "./routes/projectRoutes.js";
+import taskRoutes from "./routes/taskRoutes.js";
 import { errorHandler } from "./middlewares/errorHandler.js";
 
 const app = express();
@@ -49,6 +50,7 @@ app.get("/api/health/db", async (_req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/admin/users", adminUserRoutes);
 app.use("/api/projects", projectRoutes);
+app.use("/api/tasks", taskRoutes);
 
 app.use(errorHandler);
 

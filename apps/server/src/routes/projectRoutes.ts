@@ -11,6 +11,10 @@ import {
   handleUpdateMember,
   handleRemoveMember,
 } from "../controllers/projectController.js";
+import {
+  handleCreateTask as handleCreateProjectTask,
+  handleListTasks as handleListProjectTasks,
+} from "../controllers/taskController.js";
 import { requireAuth } from "../middlewares/authMiddleware.js";
 import { requireRoles } from "../middlewares/roleMiddleware.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -24,6 +28,11 @@ router.use(requireRoles("project_manager", "collaborator"));
 // Project routes
 router.post("/", requireRoles("project_manager"), asyncHandler(handleCreateProject));
 router.get("/", asyncHandler(handleListProjects));
+
+// Task routes
+router.get("/:projectId/tasks", asyncHandler(handleListProjectTasks));
+router.post("/:projectId/tasks", asyncHandler(handleCreateProjectTask));
+
 router.get("/:projectId", asyncHandler(handleGetProject));
 router.patch("/:projectId", asyncHandler(handleUpdateProject));
 router.delete("/:projectId", asyncHandler(handleDeleteProject));

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { api, APIError } from "../services/api";
 import type { Project, Member, User, EligibleMember } from "../services/api";
+import TaskManagementSection from "./TaskManagementSection";
 import { useRouter } from "./Router";
 
 interface ProjectDetailsProps {
@@ -105,7 +106,9 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
 
   // Find if current user is a project manager of this project
   const currentMember = members.find((m) => m.userId === currentUser.id);
-  const isProjectPM = currentMember?.projectRole === "project_manager";
+  const isProjectPM =
+    currentUser.role === "project_manager" &&
+    (project.createdBy === currentUser.id || currentMember?.projectRole === "project_manager");
   const selectedEligibleUser = eligibleUsers.find((user) => user.id === addUserId);
   const selectedUserIsCollaborator = selectedEligibleUser?.role === "collaborator";
 
@@ -598,6 +601,15 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
           )}
         </div>
       </div>
+
+      {currentUser.role !== "admin" && (
+        <TaskManagementSection
+          projectId={projectId}
+          currentUser={currentUser}
+          members={members}
+          isProjectPM={isProjectPM}
+        />
+      )}
     </div>
   );
 }
