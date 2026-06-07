@@ -859,6 +859,261 @@ h3 {
   margin-top: 4px;
 }
 
+/* Task Management Section */
+.task-section {
+  margin-top: 8px;
+}
+
+.task-panel {
+  padding: 28px;
+}
+
+.task-section-header,
+.task-header-actions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.task-header-actions {
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.task-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.task-summary-card {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.task-summary-card span {
+  color: var(--text);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.task-summary-card strong {
+  color: var(--text-h);
+  font-size: 24px;
+}
+
+.task-filters {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.4fr) repeat(5, minmax(130px, 1fr)) auto;
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 24px;
+}
+
+.task-filters .form-group {
+  margin-bottom: 0;
+}
+
+.task-filter-apply {
+  min-height: 41px;
+}
+
+.task-form-panel {
+  padding: 20px;
+  margin-bottom: 24px;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  animation: slideDown 0.2s ease-out;
+}
+
+.task-form-panel h3 {
+  margin-bottom: 16px;
+}
+
+.task-form select[multiple] {
+  min-height: 120px;
+}
+
+.form-help,
+.muted-text {
+  color: var(--text);
+  font-size: 12px;
+}
+
+.task-assignee-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.task-assignee-editor > label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.task-assignee-list,
+.task-assignees-cell,
+.task-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.task-assignee-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+  font-size: 12px;
+}
+
+.task-assignee-chip button {
+  border: none;
+  background: transparent;
+  color: #ef4444;
+  cursor: pointer;
+  font-size: 11px;
+  padding: 2px 4px;
+}
+
+.task-assignee-add-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.task-assignee-add-row select {
+  flex: 1;
+  min-width: 180px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+}
+
+.task-table-wrap {
+  max-width: 100%;
+}
+
+.task-table th,
+.task-table td {
+  vertical-align: top;
+}
+
+.task-title-cell,
+.task-description-cell {
+  display: block;
+  max-width: 280px;
+}
+
+.task-title-cell {
+  color: var(--text-h);
+  overflow-wrap: anywhere;
+}
+
+.task-description-cell {
+  margin-top: 4px;
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.task-priority,
+.task-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.priority-low {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+}
+
+.priority-medium {
+  background: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+}
+
+.priority-high {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.status-to_do {
+  background: rgba(107, 114, 128, 0.12);
+  color: #6b7280;
+}
+
+.status-in_progress {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+}
+
+.task-status.status-completed {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+}
+
+.task-status-select {
+  min-width: 130px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+}
+
+@media (max-width: 1200px) {
+  .task-filters {
+    grid-template-columns: repeat(3, minmax(160px, 1fr));
+  }
+
+  .task-filter-apply {
+    width: 100%;
+  }
+}
+
+@media (max-width: 760px) {
+  .task-section-header,
+  .task-header-actions,
+  .task-assignee-add-row,
+  .form-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .task-summary-grid,
+  .task-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .task-panel {
+    padding: 20px;
+  }
+}
+
 /* 4. Admin Panel Layout Styles */
 .admin-grid {
   display: grid;

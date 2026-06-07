@@ -92,6 +92,46 @@ export interface EligibleMember {
   role: "project_manager" | "collaborator";
 }
 
+export type TaskPriority = "low" | "medium" | "high";
+export type TaskStatus = "to_do" | "in_progress" | "completed";
+export type TaskSortBy = "due_date" | "priority" | "created_at";
+export type TaskSortOrder = "asc" | "desc";
+
+export interface TaskAssignee {
+  id: string;
+  taskId: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  assignedBy: string | null;
+  assignedAt: string;
+}
+
+export interface Task {
+  id: string;
+  projectId: string;
+  createdBy: string;
+  updatedBy: string | null;
+  title: string;
+  description: string | null;
+  priority: TaskPriority;
+  status: TaskStatus;
+  dueDate: string | null;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  assignees: TaskAssignee[];
+}
+
+export interface TaskListParams {
+  status?: TaskStatus;
+  priority?: TaskPriority;
+  assigneeId?: string;
+  search?: string;
+  sortBy?: TaskSortBy;
+  sortOrder?: TaskSortOrder;
+}
+
 export interface AdminUser {
   id: string;
   name: string;
@@ -213,6 +253,74 @@ export const api = {
     },
     async remove(projectId: string, memberId: string, reason?: string): Promise<void> {
       return request(`/projects/${projectId}/members/${memberId}`, {
+        method: "DELETE",
+        body: JSON.stringify({ reason }),
+      });
+    },
+  },
+
+  tasks: {
+    async list(projectId: string, params?: TaskListParams): Promise<{ tasks: Task[] }> {
+      const query = new URLSearchParams();
+
+      if (params?.status) query.set("status", params.status);
+      if (params?.priority) query.set("priority", params.priority);
+      if (params?.assigneeId) query.set("assigneeId", params.assigneeId);
+      if (params?.search) query.set("search", params.search);
+      if (params?.sortBy) query.set("sortBy", params.sortBy);
+      if (params?.sortOrder) query.set("sortOrder", params.sortOrder);
+
+      const queryString = query.toString();
+      return request(`/projects/${projectId}/tasks${queryString ? `?${queryString}` : ""}`);
+    },
+    async create(
+      projectId: string,
+      data: {
+        title: string;
+        description?: string | null;
+        due_date?: string | null;
+        priority?: TaskPriority;
+        status?: TaskStatus;
+        assignee_ids?: string[];
+      }
+    ): Promise<{ task: Task }> {
+      return request(`/projects/${projectId}/tasks`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+    },
+    async get(taskId: string): Promise<{ task: Task }> {
+      return request(`/tasks/${taskId}`);
+    },
+    async update(
+      taskId: string,
+      data: {
+        title?: string;
+        description?: string | null;
+        due_date?: string | null;
+        priority?: TaskPriority;
+        status?: TaskStatus;
+      }
+    ): Promise<{ task: Task }> {
+      return request(`/tasks/${taskId}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      });
+    },
+    async delete(taskId: string, reason?: string): Promise<void> {
+      return request(`/tasks/${taskId}`, {
+        method: "DELETE",
+        body: JSON.stringify({ reason }),
+      });
+    },
+    async addAssignee(taskId: string, userId: string): Promise<{ assignee: TaskAssignee }> {
+      return request(`/tasks/${taskId}/assignees`, {
+        method: "POST",
+        body: JSON.stringify({ user_id: userId }),
+      });
+    },
+    async removeAssignee(taskId: string, userId: string, reason?: string): Promise<void> {
+      return request(`/tasks/${taskId}/assignees/${userId}`, {
         method: "DELETE",
         body: JSON.stringify({ reason }),
       });
