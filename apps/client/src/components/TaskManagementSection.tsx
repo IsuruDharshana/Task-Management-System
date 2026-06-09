@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api, APIError } from "../services/api";
+import TaskCommentsSection from "./TaskCommentsSection";
 import type {
   Member,
   Task,
@@ -68,6 +69,7 @@ function getErrorMessage(error: unknown, fallback: string) {
 
 export default function TaskManagementSection({
   projectId,
+  currentUser,
   members,
   isProjectPM,
 }: TaskManagementSectionProps) {
@@ -86,6 +88,7 @@ export default function TaskManagementSection({
 
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [commentsTaskId, setCommentsTaskId] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [assigneeToAdd, setAssigneeToAdd] = useState("");
 
@@ -241,6 +244,10 @@ export default function TaskManagementSection({
     } catch (err) {
       setActionError(getErrorMessage(err, "Failed to update task status."));
     }
+  };
+
+  const toggleComments = (taskId: string) => {
+    setCommentsTaskId((current) => (current === taskId ? null : taskId));
   };
 
   const handleAddAssignee = async () => {
@@ -575,57 +582,75 @@ export default function TaskManagementSection({
               </thead>
               <tbody>
                 {tasks.map((task) => (
-                  <tr key={task.id}>
-                    <td>
-                      <strong className="task-title-cell">{task.title}</strong>
-                      {task.description && <span className="task-description-cell">{task.description}</span>}
-                    </td>
-                    <td>
-                      <span className={`task-priority priority-${task.priority}`}>{PRIORITY_LABELS[task.priority]}</span>
-                    </td>
-                    <td>
-                      {isProjectPM ? (
-                        <span className={`task-status status-${task.status}`}>{STATUS_LABELS[task.status]}</span>
-                      ) : (
-                        <select
-                          className="task-status-select"
-                          value={task.status}
-                          onChange={(event) => handleCollaboratorStatusChange(task, event.target.value as TaskStatus)}
-                        >
-                          <option value="to_do">To Do</option>
-                          <option value="in_progress">In Progress</option>
-                          <option value="completed">Completed</option>
-                        </select>
-                      )}
-                    </td>
-                    <td>{formatDate(task.dueDate)}</td>
-                    <td>
-                      <div className="task-assignees-cell">
-                        {task.assignees.length === 0
-                          ? "Unassigned"
-                          : task.assignees.map((assignee) => (
-                              <span key={assignee.id} className="badge badge-secondary">
-                                {assignee.userName}
-                              </span>
-                            ))}
-                      </div>
-                    </td>
-                    <td>{formatDateTime(task.updatedAt)}</td>
-                    <td>
-                      {isProjectPM ? (
-                        <div className="task-row-actions">
-                          <button className="btn btn-secondary btn-xs" onClick={() => openEditForm(task)}>
-                            Edit
-                          </button>
-                          <button className="btn btn-danger btn-xs" onClick={() => handleDeleteTask(task)}>
-                            Delete
-                          </button>
+                  <React.Fragment key={task.id}>
+                    <tr>
+                      <td>
+                        <strong className="task-title-cell">{task.title}</strong>
+                        {task.description && <span className="task-description-cell">{task.description}</span>}
+                      </td>
+                      <td>
+                        <span className={`task-priority priority-${task.priority}`}>{PRIORITY_LABELS[task.priority]}</span>
+                      </td>
+                      <td>
+                        {isProjectPM ? (
+                          <span className={`task-status status-${task.status}`}>{STATUS_LABELS[task.status]}</span>
+                        ) : (
+                          <select
+                            className="task-status-select"
+                            value={task.status}
+                            onChange={(event) => handleCollaboratorStatusChange(task, event.target.value as TaskStatus)}
+                          >
+                            <option value="to_do">To Do</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="completed">Completed</option>
+                          </select>
+                        )}
+                      </td>
+                      <td>{formatDate(task.dueDate)}</td>
+                      <td>
+                        <div className="task-assignees-cell">
+                          {task.assignees.length === 0
+                            ? "Unassigned"
+                            : task.assignees.map((assignee) => (
+                                <span key={assignee.id} className="badge badge-secondary">
+                                  {assignee.userName}
+                                </span>
+                              ))}
                         </div>
-                      ) : (
-                        <span className="muted-text">Status only</span>
-                      )}
-                    </td>
-                  </tr>
+                      </td>
+                      <td>{formatDateTime(task.updatedAt)}</td>
+                      <td>
+                        <div className="task-row-actions">
+                          <button className="btn btn-secondary btn-xs" onClick={() => toggleComments(task.id)}>
+                            {commentsTaskId === task.id ? "Hide Comments" : "Comments"}
+                          </button>
+                          {isProjectPM ? (
+                            <>
+                              <button className="btn btn-secondary btn-xs" onClick={() => openEditForm(task)}>
+                                Edit
+                              </button>
+                              <button className="btn btn-danger btn-xs" onClick={() => handleDeleteTask(task)}>
+                                Delete
+                              </button>
+                            </>
+                          ) : (
+                            <span className="muted-text">Status only</span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                    {commentsTaskId === task.id && (
+                      <tr className="task-comments-row">
+                        <td colSpan={7}>
+                          <TaskCommentsSection
+                            taskId={task.id}
+                            currentUser={currentUser}
+                            isProjectPM={isProjectPM}
+                          />
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>
