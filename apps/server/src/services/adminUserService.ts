@@ -1,10 +1,11 @@
 import { supabaseAdmin } from "../config/supabaseAdmin.js";
 import { env } from "../config/env.js";
-import { sendPasswordResetEmail, sendUserOnboardingEmail } from "./emailService.js";
+import { sendPasswordResetEmail } from "./emailService.js";
 import type { UserRole } from "../types/auth.js";
 import { AppError } from "../utils/appError.js";
 import { generateTemporaryPassword, hashPassword } from "../utils/password.js";
 import { logActivity } from "./activityLogService.js";
+import { sendWelcomeEmail } from "./email/emailService.js";
 
 type AdminCreatableRole = "project_manager" | "collaborator";
 type UserStatusFilter = "active" | "inactive" | "all";
@@ -237,7 +238,10 @@ export async function getUserByIdForAdmin(userId: string): Promise<AdminUser> {
   return mapUser(user);
 }
 
-export async function createUserByAdmin(input: CreateUserInput, adminUserId: string): Promise<{ user: AdminUser }> {
+export async function createUserByAdmin(
+  input: CreateUserInput,
+  adminUserId: string
+): Promise<{ user: AdminUser; emailSent: boolean }> {
   const name = normalizeName(input.name);
   const email = normalizeEmail(input.email);
   const role = normalizeCreatableRole(input.role);
@@ -272,15 +276,18 @@ export async function createUserByAdmin(input: CreateUserInput, adminUserId: str
   const user = mapUser(data as AppUserRow);
   const loginUrl = `${env.clientUrl}/login`;
 
+  let emailSent = true;
+
   try {
-    await sendUserOnboardingEmail({
+    await sendWelcomeEmail({
       to: user.email,
       name: user.name,
       temporaryPassword,
       loginUrl,
     });
   } catch (emailError) {
-    console.error("Failed to print Veyra development onboarding email.", emailError);
+    emailSent = false;
+    console.error("Failed to send Veyra onboarding email.", emailError);
   }
 
   await logActivity({
@@ -288,11 +295,17 @@ export async function createUserByAdmin(input: CreateUserInput, adminUserId: str
     action: "admin_user_created",
     entityType: "user",
     entityId: user.id,
-    metadata: { targetUserId: user.id, targetUserName: user.name, targetUserRole: user.role },
+    metadata: {
+      targetUserId: user.id,
+      targetUserName: user.name,
+      targetUserRole: user.role,
+      emailSent,
+    },
   });
 
   return {
     user,
+    emailSent,
   };
 }
 
