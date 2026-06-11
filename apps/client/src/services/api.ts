@@ -123,6 +123,16 @@ export interface Task {
   assignees: TaskAssignee[];
 }
 
+export interface TaskComment {
+  id: string;
+  taskId: string;
+  userId: string;
+  userName: string;
+  commentText: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface TaskListParams {
   status?: TaskStatus;
   priority?: TaskPriority;
@@ -321,6 +331,27 @@ export const api = {
     },
     async removeAssignee(taskId: string, userId: string, reason?: string): Promise<void> {
       return request(`/tasks/${taskId}/assignees/${userId}`, {
+        method: "DELETE",
+        body: JSON.stringify({ reason }),
+      });
+    },
+    async getTaskComments(taskId: string): Promise<{ comments: TaskComment[] }> {
+      return request(`/tasks/${taskId}/comments`);
+    },
+    async createTaskComment(taskId: string, commentText: string): Promise<{ comment: TaskComment }> {
+      return request(`/tasks/${taskId}/comments`, {
+        method: "POST",
+        body: JSON.stringify({ commentText }),
+      });
+    },
+    async updateTaskComment(commentId: string, commentText: string): Promise<{ comment: TaskComment }> {
+      return request(`/comments/${commentId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ commentText }),
+      });
+    },
+    async deleteTaskComment(commentId: string, reason?: string): Promise<void> {
+      return request(`/comments/${commentId}`, {
         method: "DELETE",
         body: JSON.stringify({ reason }),
       });

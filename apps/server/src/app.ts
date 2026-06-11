@@ -5,6 +5,7 @@ import { env } from "./config/env.js";
 import { supabase } from "./config/supabase.js";
 import adminUserRoutes from "./routes/adminUserRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
+import commentRoutes from "./routes/commentRoutes.js";
 import projectRoutes from "./routes/projectRoutes.js";
 import taskRoutes from "./routes/taskRoutes.js";
 import { errorHandler } from "./middlewares/errorHandler.js";
@@ -51,6 +52,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/admin/users", adminUserRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/tasks", taskRoutes);
+app.use("/api/comments", commentRoutes);
 
 app.use(errorHandler);
 
