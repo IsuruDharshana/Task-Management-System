@@ -3,6 +3,7 @@ import { AppError } from "../utils/appError.js";
 import { hashPassword, validatePasswordPolicy, verifyPassword } from "../utils/password.js";
 import { signAccessToken } from "../utils/jwt.js";
 import type { AuthUser, UserRole } from "../types/auth.js";
+import { logActivity } from "./activityLogService.js";
 
 interface AppUserRow {
   id: string;
@@ -186,6 +187,22 @@ export async function resetPassword(
   }
 
   const updated = updatedUser as AppUserRow;
+  const action = user.must_reset_password
+    ? "first_login_password_reset_completed"
+    : "own_password_changed";
+
+  await logActivity({
+    actorUserId: updated.id,
+    action,
+    entityType: "account",
+    entityId: updated.id,
+    metadata: {
+      message:
+        action === "first_login_password_reset_completed"
+          ? "User completed first login password reset"
+          : "User changed own password",
+    },
+  });
 
   const token = signAccessToken({
     sub: updated.id,

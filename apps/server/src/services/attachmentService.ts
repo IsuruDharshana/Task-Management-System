@@ -4,11 +4,18 @@ import { supabaseAdmin } from "../config/supabaseAdmin.js";
 import type { AuthUser } from "../types/auth.js";
 import { AppError } from "../utils/appError.js";
 import { validateUuid } from "./taskService.js";
+import { logActivity } from "./activityLogService.js";
 
 interface TaskRow {
   id: string;
   project_id: string;
+  title: string;
   deleted_at: string | null;
+}
+
+interface ProjectRow {
+  id: string;
+  name: string;
 }
 
 interface AttachmentRow {
@@ -201,7 +208,7 @@ function getReason(input: DeleteAttachmentInput): string | null {
 async function getActiveTask(taskId: string): Promise<TaskRow> {
   const { data, error } = await supabaseAdmin
     .from("tasks")
-    .select("id, project_id, deleted_at")
+    .select("id, project_id, title, deleted_at")
     .eq("id", taskId)
     .is("deleted_at", null)
     .maybeSingle();
@@ -215,6 +222,25 @@ async function getActiveTask(taskId: string): Promise<TaskRow> {
   }
 
   return data as TaskRow;
+}
+
+async function getActiveProject(projectId: string): Promise<ProjectRow> {
+  const { data, error } = await supabaseAdmin
+    .from("projects")
+    .select("id, name")
+    .eq("id", projectId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (error) {
+    throw new AppError(500, "DATABASE_ERROR", "Failed to load project.");
+  }
+
+  if (!data) {
+    throw new AppError(404, "PROJECT_NOT_FOUND", "Project not found.");
+  }
+
+  return data as ProjectRow;
 }
 
 async function getActiveAttachment(attachmentId: string): Promise<AttachmentRecord> {
@@ -334,7 +360,24 @@ export async function createTaskAttachment(
     throw new AppError(500, "ATTACHMENT_CREATE_FAILED", "Failed to save attachment metadata.");
   }
 
-  return mapAttachment(data as unknown as AttachmentRow);
+  const attachment = mapAttachment(data as unknown as AttachmentRow);
+  const project = await getActiveProject(task.project_id);
+  await logActivity({
+    actorUserId: user.id,
+    action: "task_attachment_uploaded",
+    entityType: "attachment",
+    entityId: attachment.id,
+    metadata: {
+      projectId: task.project_id,
+      projectName: project.name,
+      taskId: task.id,
+      taskTitle: task.title,
+      attachmentId: attachment.id,
+      fileName: attachment.fileName,
+    },
+  });
+
+  return attachment;
 }
 
 export async function createAttachmentDownloadUrl(
@@ -388,6 +431,22 @@ export async function deleteTaskAttachment(
   if (error) {
     throw new AppError(500, "ATTACHMENT_DELETE_FAILED", "Failed to delete attachment.");
   }
+
+  const project = await getActiveProject(task.project_id);
+  await logActivity({
+    actorUserId: user.id,
+    action: "task_attachment_deleted",
+    entityType: "attachment",
+    entityId: attachment.id,
+    metadata: {
+      projectId: task.project_id,
+      projectName: project.name,
+      taskId: task.id,
+      taskTitle: task.title,
+      attachmentId: attachment.id,
+      fileName: attachment.file_name,
+    },
+  });
 }
 
 export { validateUuid };

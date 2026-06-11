@@ -51,7 +51,7 @@ export async function getAdminUser(req: Request, res: Response): Promise<void> {
 }
 
 export async function createAdminUser(req: Request, res: Response): Promise<void> {
-  const result = await createUserByAdmin(req.body);
+  const result = await createUserByAdmin(req.body, getAuthenticatedAdminId(req));
 
   res.status(201).json({
     success: true,
@@ -61,7 +61,7 @@ export async function createAdminUser(req: Request, res: Response): Promise<void
 }
 
 export async function updateAdminUser(req: Request, res: Response): Promise<void> {
-  const user = await updateUserByAdmin(getUserIdParam(req), req.body);
+  const user = await updateUserByAdmin(getUserIdParam(req), req.body, getAuthenticatedAdminId(req));
 
   res.status(200).json({
     success: true,
@@ -85,7 +85,7 @@ export async function deactivateAdminUser(req: Request, res: Response): Promise<
 }
 
 export async function reactivateAdminUser(req: Request, res: Response): Promise<void> {
-  const user = await reactivateUserByAdmin(getUserIdParam(req));
+  const user = await reactivateUserByAdmin(getUserIdParam(req), getAuthenticatedAdminId(req));
 
   res.status(200).json({
     success: true,

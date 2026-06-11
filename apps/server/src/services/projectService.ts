@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "../config/supabaseAdmin.js";
 import type { AuthUser, UserRole } from "../types/auth.js";
 import { AppError } from "../utils/appError.js";
+import { logActivity } from "./activityLogService.js";
 
 // Row types (DB shapes)
 
@@ -380,6 +381,14 @@ export async function createProject(input: CreateProjectInput, user: AuthUser): 
     throw new AppError(500, "PROJECT_CREATE_FAILED", "Failed to add creator as project member.");
   }
 
+  await logActivity({
+    actorUserId: user.id,
+    action: "project_created",
+    entityType: "project",
+    entityId: project.id,
+    metadata: { projectId: project.id, projectName: project.name },
+  });
+
   return mapProject(project);
 }
 
@@ -496,7 +505,21 @@ export async function updateProject(
     throw new AppError(500, "PROJECT_UPDATE_FAILED", "Failed to update project.");
   }
 
-  return mapProject(data as ProjectRow);
+  const updatedProject = data as ProjectRow;
+
+  await logActivity({
+    actorUserId: user.id,
+    action: "project_updated",
+    entityType: "project",
+    entityId: projectId,
+    metadata: {
+      projectId,
+      projectName: updatedProject.name,
+      changedFields: Object.keys(updates).filter((field) => !["updated_by", "updated_at"].includes(field)),
+    },
+  });
+
+  return mapProject(updatedProject);
 }
 
 interface DeleteProjectInput {
@@ -510,7 +533,7 @@ export async function deleteProject(
 ): Promise<void> {
   requireNonAdmin(user);
   await requireProjectManagerForProject(projectId, user.id);
-  await getActiveProject(projectId);
+  const project = await getActiveProject(projectId);
 
   const reason = typeof input.reason === "string" ? input.reason.trim() || null : null;
 
@@ -529,6 +552,14 @@ export async function deleteProject(
   if (error) {
     throw new AppError(500, "PROJECT_DELETE_FAILED", "Failed to delete project.");
   }
+
+  await logActivity({
+    actorUserId: user.id,
+    action: "project_deleted",
+    entityType: "project",
+    entityId: projectId,
+    metadata: { projectId, projectName: project.name },
+  });
 }
 
 // Member CRUD
@@ -604,7 +635,7 @@ export async function addMember(
 ): Promise<MemberDTO> {
   requireNonAdmin(user);
   await requireProjectManagerForProject(projectId, user.id);
-  await getActiveProject(projectId);
+  const project = await getActiveProject(projectId);
 
   const targetUserId = validateUuid(input.user_id, "user_id");
   const projectRole = validateProjectRole(input.project_role);
@@ -673,7 +704,24 @@ export async function addMember(
     throw new AppError(500, "MEMBER_ADD_FAILED", "Failed to add member.");
   }
 
-  return mapMember(data as unknown as MemberWithUserRow);
+  const member = mapMember(data as unknown as MemberWithUserRow);
+
+  await logActivity({
+    actorUserId: user.id,
+    action: "project_member_added",
+    entityType: "project",
+    entityId: projectId,
+    metadata: {
+      projectId,
+      projectName: project.name,
+      memberId: member.id,
+      targetUserId: member.userId,
+      targetUserName: member.userName,
+      projectRole: member.projectRole,
+    },
+  });
+
+  return member;
 }
 
 interface UpdateMemberInput {
@@ -689,7 +737,7 @@ export async function updateMember(
 ): Promise<MemberDTO> {
   requireNonAdmin(user);
   await requireProjectManagerForProject(projectId, user.id);
-  await getActiveProject(projectId);
+  const project = await getActiveProject(projectId);
 
   const existingMember = await getActiveMember(memberId, projectId);
 
@@ -755,7 +803,27 @@ export async function updateMember(
     throw new AppError(500, "MEMBER_UPDATE_FAILED", "Failed to update member.");
   }
 
-  return mapMember(data as unknown as MemberWithUserRow);
+  const member = mapMember(data as unknown as MemberWithUserRow);
+
+  if (updates.project_role && updates.project_role !== existingMember.project_role) {
+    await logActivity({
+      actorUserId: user.id,
+      action: "project_member_role_changed",
+      entityType: "project",
+      entityId: projectId,
+      metadata: {
+        projectId,
+        projectName: project.name,
+        memberId: member.id,
+        targetUserId: member.userId,
+        targetUserName: member.userName,
+        from: existingMember.project_role,
+        to: member.projectRole,
+      },
+    });
+  }
+
+  return member;
 }
 
 interface RemoveMemberInput {
@@ -770,7 +838,7 @@ export async function removeMember(
 ): Promise<void> {
   requireNonAdmin(user);
   await requireProjectManagerForProject(projectId, user.id);
-  await getActiveProject(projectId);
+  const project = await getActiveProject(projectId);
 
   const member = await getActiveMember(memberId, projectId);
 
@@ -809,4 +877,19 @@ export async function removeMember(
   if (error) {
     throw new AppError(500, "MEMBER_REMOVE_FAILED", "Failed to remove member.");
   }
+
+  await logActivity({
+    actorUserId: user.id,
+    action: "project_member_removed",
+    entityType: "project",
+    entityId: projectId,
+    metadata: {
+      projectId,
+      projectName: project.name,
+      memberId,
+      targetUserId: member.user_id,
+      targetUserName: member.user?.name ?? "",
+      projectRole: member.project_role,
+    },
+  });
 }

@@ -3,6 +3,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import { env } from "./config/env.js";
 import { supabase } from "./config/supabase.js";
+import activityLogRoutes from "./routes/activityLogRoutes.js";
 import adminUserRoutes from "./routes/adminUserRoutes.js";
 import attachmentRoutes from "./routes/attachmentRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
@@ -50,6 +51,7 @@ app.get("/api/health/db", async (_req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
+app.use("/api/activity-logs", activityLogRoutes);
 app.use("/api/admin/users", adminUserRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/tasks", taskRoutes);

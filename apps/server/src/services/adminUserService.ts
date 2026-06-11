@@ -4,6 +4,7 @@ import { sendPasswordResetEmail, sendUserOnboardingEmail } from "./emailService.
 import type { UserRole } from "../types/auth.js";
 import { AppError } from "../utils/appError.js";
 import { generateTemporaryPassword, hashPassword } from "../utils/password.js";
+import { logActivity } from "./activityLogService.js";
 
 type AdminCreatableRole = "project_manager" | "collaborator";
 type UserStatusFilter = "active" | "inactive" | "all";
@@ -236,7 +237,7 @@ export async function getUserByIdForAdmin(userId: string): Promise<AdminUser> {
   return mapUser(user);
 }
 
-export async function createUserByAdmin(input: CreateUserInput): Promise<{ user: AdminUser }> {
+export async function createUserByAdmin(input: CreateUserInput, adminUserId: string): Promise<{ user: AdminUser }> {
   const name = normalizeName(input.name);
   const email = normalizeEmail(input.email);
   const role = normalizeCreatableRole(input.role);
@@ -282,12 +283,24 @@ export async function createUserByAdmin(input: CreateUserInput): Promise<{ user:
     console.error("Failed to print Veyra development onboarding email.", emailError);
   }
 
+  await logActivity({
+    actorUserId: adminUserId,
+    action: "admin_user_created",
+    entityType: "user",
+    entityId: user.id,
+    metadata: { targetUserId: user.id, targetUserName: user.name, targetUserRole: user.role },
+  });
+
   return {
     user,
   };
 }
 
-export async function updateUserByAdmin(userId: string, input: UpdateUserInput): Promise<AdminUser> {
+export async function updateUserByAdmin(
+  userId: string,
+  input: UpdateUserInput,
+  adminUserId: string
+): Promise<AdminUser> {
   const existingUser = await getExistingUser(userId);
   const updates: Partial<Pick<AppUserRow, "name" | "email" | "role" | "updated_at">> = {};
 
@@ -331,7 +344,21 @@ export async function updateUserByAdmin(userId: string, input: UpdateUserInput):
     throw new AppError(500, "USER_UPDATE_FAILED", "Failed to update user.");
   }
 
-  return mapUser(data as AppUserRow);
+  const user = mapUser(data as AppUserRow);
+  await logActivity({
+    actorUserId: adminUserId,
+    action: "admin_user_updated",
+    entityType: "user",
+    entityId: user.id,
+    metadata: {
+      targetUserId: user.id,
+      targetUserName: user.name,
+      targetUserRole: user.role,
+      changedFields: Object.keys(updates).filter((field) => field !== "updated_at"),
+    },
+  });
+
+  return user;
 }
 
 export async function deactivateUserByAdmin(
@@ -363,10 +390,19 @@ export async function deactivateUserByAdmin(
     throw new AppError(500, "USER_DEACTIVATE_FAILED", "Failed to deactivate user.");
   }
 
-  return mapUser(data as AppUserRow);
+  const user = mapUser(data as AppUserRow);
+  await logActivity({
+    actorUserId: adminUserId,
+    action: "admin_user_deactivated",
+    entityType: "user",
+    entityId: user.id,
+    metadata: { targetUserId: user.id, targetUserName: user.name, targetUserRole: user.role },
+  });
+
+  return user;
 }
 
-export async function reactivateUserByAdmin(userId: string): Promise<AdminUser> {
+export async function reactivateUserByAdmin(userId: string, adminUserId: string): Promise<AdminUser> {
   await getExistingUser(userId);
 
   const { data, error } = await supabaseAdmin
@@ -384,7 +420,16 @@ export async function reactivateUserByAdmin(userId: string): Promise<AdminUser> 
     throw new AppError(500, "USER_REACTIVATE_FAILED", "Failed to reactivate user.");
   }
 
-  return mapUser(data as AppUserRow);
+  const user = mapUser(data as AppUserRow);
+  await logActivity({
+    actorUserId: adminUserId,
+    action: "admin_user_reactivated",
+    entityType: "user",
+    entityId: user.id,
+    metadata: { targetUserId: user.id, targetUserName: user.name, targetUserRole: user.role },
+  });
+
+  return user;
 }
 
 export async function resetUserPasswordByAdmin(
@@ -432,6 +477,14 @@ export async function resetUserPasswordByAdmin(
   } catch (emailError) {
     console.error("Failed to print Veyra development password reset email.", emailError);
   }
+
+  await logActivity({
+    actorUserId: adminUserId,
+    action: "admin_user_password_reset",
+    entityType: "user",
+    entityId: user.id,
+    metadata: { targetUserId: user.id, targetUserName: user.name, targetUserRole: user.role },
+  });
 
   return {
     user,

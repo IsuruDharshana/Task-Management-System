@@ -2,15 +2,18 @@ import { supabaseAdmin } from "../config/supabaseAdmin.js";
 import type { AuthUser } from "../types/auth.js";
 import { AppError } from "../utils/appError.js";
 import { validateUuid } from "./taskService.js";
+import { logActivity } from "./activityLogService.js";
 
 interface TaskRow {
   id: string;
   project_id: string;
+  title: string;
   deleted_at: string | null;
 }
 
 interface ProjectRow {
   id: string;
+  name: string;
   created_by: string;
   deleted_at: string | null;
 }
@@ -97,7 +100,7 @@ function getReason(input: DeleteCommentInput): string | null {
 async function getActiveTask(taskId: string): Promise<TaskRow> {
   const { data, error } = await supabaseAdmin
     .from("tasks")
-    .select("id, project_id, deleted_at")
+    .select("id, project_id, title, deleted_at")
     .eq("id", taskId)
     .is("deleted_at", null)
     .maybeSingle();
@@ -116,7 +119,7 @@ async function getActiveTask(taskId: string): Promise<TaskRow> {
 async function getActiveProject(projectId: string): Promise<ProjectRow> {
   const { data, error } = await supabaseAdmin
     .from("projects")
-    .select("id, created_by, deleted_at")
+    .select("id, name, created_by, deleted_at")
     .eq("id", projectId)
     .is("deleted_at", null)
     .maybeSingle();
@@ -247,7 +250,23 @@ export async function createTaskComment(
     throw new AppError(500, "COMMENT_CREATE_FAILED", "Failed to create comment.");
   }
 
-  return mapComment(data as unknown as CommentRow);
+  const comment = mapComment(data as unknown as CommentRow);
+  const project = await getActiveProject(task.project_id);
+  await logActivity({
+    actorUserId: user.id,
+    action: "task_comment_added",
+    entityType: "comment",
+    entityId: comment.id,
+    metadata: {
+      projectId: task.project_id,
+      projectName: project.name,
+      taskId: task.id,
+      taskTitle: task.title,
+      commentId: comment.id,
+    },
+  });
+
+  return comment;
 }
 
 export async function updateTaskComment(
@@ -257,7 +276,9 @@ export async function updateTaskComment(
 ): Promise<TaskCommentDTO> {
   requireNonAdmin(user);
   const comment = await getActiveComment(commentId);
-  const projectId = await getCommentProjectId(comment);
+  const task = await getActiveTask(comment.task_id);
+  const projectId = task.project_id;
+  const project = await getActiveProject(projectId);
   await requireActiveProjectMembership(projectId, user.id);
 
   if (comment.user_id !== user.id) {
@@ -281,7 +302,22 @@ export async function updateTaskComment(
     throw new AppError(500, "COMMENT_UPDATE_FAILED", "Failed to update comment.");
   }
 
-  return mapComment(data as unknown as CommentRow);
+  const updatedComment = mapComment(data as unknown as CommentRow);
+  await logActivity({
+    actorUserId: user.id,
+    action: "task_comment_updated",
+    entityType: "comment",
+    entityId: comment.id,
+    metadata: {
+      projectId,
+      projectName: project.name,
+      taskId: comment.task_id,
+      taskTitle: task.title,
+      commentId: comment.id,
+    },
+  });
+
+  return updatedComment;
 }
 
 export async function deleteTaskComment(
@@ -291,7 +327,9 @@ export async function deleteTaskComment(
 ): Promise<void> {
   requireNonAdmin(user);
   const comment = await getActiveComment(commentId);
-  const projectId = await getCommentProjectId(comment);
+  const task = await getActiveTask(comment.task_id);
+  const projectId = task.project_id;
+  const project = await getActiveProject(projectId);
   await requireActiveProjectMembership(projectId, user.id);
 
   const isOwnComment = comment.user_id === user.id;
@@ -314,6 +352,20 @@ export async function deleteTaskComment(
   if (error) {
     throw new AppError(500, "COMMENT_DELETE_FAILED", "Failed to delete comment.");
   }
+
+  await logActivity({
+    actorUserId: user.id,
+    action: "task_comment_deleted",
+    entityType: "comment",
+    entityId: comment.id,
+    metadata: {
+      projectId,
+      projectName: project.name,
+      taskId: comment.task_id,
+      taskTitle: task.title,
+      commentId: comment.id,
+    },
+  });
 }
 
 export { validateUuid };
