@@ -146,6 +146,17 @@ export interface TaskAttachment {
   createdAt: string;
 }
 
+export interface ActivityLog {
+  id: string;
+  actorUserId: string | null;
+  actorName: string | null;
+  action: string;
+  entityType: string;
+  entityId: string | null;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+}
+
 export interface TaskListParams {
   status?: TaskStatus;
   priority?: TaskPriority;
@@ -167,6 +178,15 @@ export interface AdminUser {
   createdAt?: string;
   updatedAt?: string;
   deletedAt?: string | null;
+}
+
+export interface ActivityLogFilters {
+  entityType?: string;
+  entityId?: string;
+  action?: string;
+  projectId?: string;
+  userId?: string;
+  limit?: number;
 }
 
 export const api = {
@@ -394,6 +414,22 @@ export const api = {
         method: "DELETE",
         body: JSON.stringify({ reason }),
       });
+    },
+  },
+
+  activityLogs: {
+    async list(filters?: ActivityLogFilters): Promise<{ logs: ActivityLog[] }> {
+      const query = new URLSearchParams();
+
+      if (filters?.entityType) query.set("entityType", filters.entityType);
+      if (filters?.entityId) query.set("entityId", filters.entityId);
+      if (filters?.action) query.set("action", filters.action);
+      if (filters?.projectId) query.set("projectId", filters.projectId);
+      if (filters?.userId) query.set("userId", filters.userId);
+      if (filters?.limit) query.set("limit", String(filters.limit));
+
+      const queryString = query.toString();
+      return request(`/activity-logs${queryString ? `?${queryString}` : ""}`);
     },
   },
 

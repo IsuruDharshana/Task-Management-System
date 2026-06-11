@@ -7,6 +7,7 @@ import ProjectsList from "./components/ProjectsList";
 import CreateProject from "./components/CreateProject";
 import ProjectDetails from "./components/ProjectDetails";
 import AdminPanel from "./components/AdminPanel";
+import ActivityLogSection from "./components/ActivityLogSection";
 import FirstLoginPasswordResetPage from "./components/FirstLoginPasswordResetPage";
 import SettingsPage from "./components/SettingsPage";
 import "./App.css";
@@ -68,6 +69,7 @@ function AppContent() {
   const matchCreateProject = useRouteMatch("/projects/new");
   const matchProjectDetails = useRouteMatch("/projects/:projectId");
   const matchAdmin = useRouteMatch("/admin");
+  const matchActivityLog = useRouteMatch("/activity-log");
   const matchSettings = useRouteMatch("/settings");
 
   // Redirect to correct dashboard based on role on default root path '/'
@@ -139,6 +141,10 @@ function AppContent() {
       return <AdminPanel />;
     }
 
+    if (matchActivityLog.matches) {
+      return <ActivityLogSection currentUser={currentUser} />;
+    }
+
     if (matchSettings.matches) {
       return <SettingsPage currentUser={currentUser} onUserUpdated={setCurrentUser} />;
     }
@@ -184,6 +190,12 @@ function AppContent() {
               Admin Workspace
             </button>
           )}
+          <button
+            onClick={() => navigate("/activity-log")}
+            className={`nav-item ${path === "/activity-log" ? "active" : ""}`}
+          >
+            {isUserAdmin ? "Audit Log" : "Activity Log"}
+          </button>
           <button
             onClick={() => navigate("/settings")}
             className={`nav-item ${path === "/settings" ? "active" : ""}`}

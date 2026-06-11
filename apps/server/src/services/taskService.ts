@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "../config/supabaseAdmin.js";
 import type { AuthUser } from "../types/auth.js";
 import { AppError } from "../utils/appError.js";
+import { logActivity } from "./activityLogService.js";
 
 type TaskPriority = "low" | "medium" | "high";
 type TaskStatus = "to_do" | "in_progress" | "completed";
@@ -8,6 +9,7 @@ type TaskSortBy = "due_date" | "priority" | "created_at";
 
 interface ProjectRow {
   id: string;
+  name: string;
   created_by: string;
   deleted_at: string | null;
 }
@@ -279,7 +281,7 @@ function getReason(input: DeleteTaskInput | RemoveAssigneeInput): string | null 
 async function getActiveProject(projectId: string): Promise<ProjectRow> {
   const { data, error } = await supabaseAdmin
     .from("projects")
-    .select("id, created_by, deleted_at")
+    .select("id, name, created_by, deleted_at")
     .eq("id", projectId)
     .is("deleted_at", null)
     .maybeSingle();
@@ -631,6 +633,15 @@ export async function createTask(
   }
 
   const [taskDto] = await mapTasksWithAssignees([task]);
+  const project = await getActiveProject(projectId);
+  await logActivity({
+    actorUserId: user.id,
+    action: "task_created",
+    entityType: "task",
+    entityId: task.id,
+    metadata: { projectId, projectName: project.name, taskId: task.id, taskTitle: task.title },
+  });
+
   return taskDto;
 }
 
@@ -724,7 +735,82 @@ export async function updateTask(taskId: string, input: UpdateTaskInput, user: A
     throw new AppError(500, "TASK_UPDATE_FAILED", "Failed to update task.");
   }
 
-  const [taskDto] = await mapTasksWithAssignees([data as TaskRow]);
+  const updatedTask = data as TaskRow;
+  const changedTitle = updatedTask.title !== task.title;
+  const changedDescription = updatedTask.description !== task.description;
+  const project = await getActiveProject(task.project_id);
+
+  if (updatedTask.status !== task.status) {
+    await logActivity({
+      actorUserId: user.id,
+      action: "task_status_changed",
+      entityType: "task",
+      entityId: task.id,
+      metadata: {
+        projectId: task.project_id,
+        projectName: project.name,
+        taskId: task.id,
+        taskTitle: updatedTask.title,
+        from: task.status,
+        to: updatedTask.status,
+      },
+    });
+  }
+
+  if (updatedTask.priority !== task.priority) {
+    await logActivity({
+      actorUserId: user.id,
+      action: "task_priority_changed",
+      entityType: "task",
+      entityId: task.id,
+      metadata: {
+        projectId: task.project_id,
+        projectName: project.name,
+        taskId: task.id,
+        taskTitle: updatedTask.title,
+        from: task.priority,
+        to: updatedTask.priority,
+      },
+    });
+  }
+
+  if (updatedTask.due_date !== task.due_date) {
+    await logActivity({
+      actorUserId: user.id,
+      action: "task_due_date_changed",
+      entityType: "task",
+      entityId: task.id,
+      metadata: {
+        projectId: task.project_id,
+        projectName: project.name,
+        taskId: task.id,
+        taskTitle: updatedTask.title,
+        from: task.due_date,
+        to: updatedTask.due_date,
+      },
+    });
+  }
+
+  if (changedTitle || changedDescription) {
+    await logActivity({
+      actorUserId: user.id,
+      action: "task_updated",
+      entityType: "task",
+      entityId: task.id,
+      metadata: {
+        projectId: task.project_id,
+        projectName: project.name,
+        taskId: task.id,
+        taskTitle: updatedTask.title,
+        changedFields: [
+          ...(changedTitle ? ["title"] : []),
+          ...(changedDescription ? ["description"] : []),
+        ],
+      },
+    });
+  }
+
+  const [taskDto] = await mapTasksWithAssignees([updatedTask]);
   return taskDto;
 }
 
@@ -753,6 +839,15 @@ export async function deleteTask(taskId: string, input: DeleteTaskInput, user: A
   if (error) {
     throw new AppError(500, "TASK_DELETE_FAILED", "Failed to delete task.");
   }
+
+  const project = await getActiveProject(task.project_id);
+  await logActivity({
+    actorUserId: user.id,
+    action: "task_deleted",
+    entityType: "task",
+    entityId: task.id,
+    metadata: { projectId: task.project_id, projectName: project.name, taskId: task.id, taskTitle: task.title },
+  });
 }
 
 export async function addTaskAssignee(
@@ -770,7 +865,25 @@ export async function addTaskAssignee(
   await requireCanManageProject(task.project_id, user.id);
 
   const assigneeUserId = validateUuid(input.user_id, "user_id");
-  return createActiveAssignment(task, assigneeUserId, user.id);
+  const assignee = await createActiveAssignment(task, assigneeUserId, user.id);
+  const project = await getActiveProject(task.project_id);
+
+  await logActivity({
+    actorUserId: user.id,
+    action: "task_assignee_added",
+    entityType: "task",
+    entityId: task.id,
+    metadata: {
+      projectId: task.project_id,
+      projectName: project.name,
+      taskId: task.id,
+      taskTitle: task.title,
+      assigneeId: assignee.userId,
+      assigneeName: assignee.userName,
+    },
+  });
+
+  return assignee;
 }
 
 export async function removeTaskAssignee(
@@ -790,7 +903,7 @@ export async function removeTaskAssignee(
 
   const { data: assignment, error: assignmentError } = await supabaseAdmin
     .from("task_assignees")
-    .select("id")
+    .select("id, user:app_users!user_id(id, name)")
     .eq("task_id", task.id)
     .eq("user_id", userId)
     .is("removed_at", null)
@@ -817,4 +930,21 @@ export async function removeTaskAssignee(
   if (error) {
     throw new AppError(500, "ASSIGNEE_REMOVE_FAILED", "Failed to remove task assignee.");
   }
+
+  const assignmentRow = assignment as unknown as { user?: { id: string; name: string } | null };
+  const project = await getActiveProject(task.project_id);
+  await logActivity({
+    actorUserId: user.id,
+    action: "task_assignee_removed",
+    entityType: "task",
+    entityId: task.id,
+    metadata: {
+      projectId: task.project_id,
+      projectName: project.name,
+      taskId: task.id,
+      taskTitle: task.title,
+      assigneeId: userId,
+      assigneeName: assignmentRow.user?.name ?? "",
+    },
+  });
 }
