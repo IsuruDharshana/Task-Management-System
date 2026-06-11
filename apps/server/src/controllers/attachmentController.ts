@@ -38,7 +38,7 @@ export async function handleListTaskAttachments(req: Request, res: Response): Pr
 export async function handleCreateTaskAttachment(req: Request, res: Response): Promise<void> {
   const user = getAuthenticatedUser(req);
   const taskId = getTaskIdParam(req);
-  const attachment = await createTaskAttachment(taskId, req.file, user);
+  const attachment = await createTaskAttachment(taskId, req.file, user, req.body);
 
   res.status(201).json({
     success: true,

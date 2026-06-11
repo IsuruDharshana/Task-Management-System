@@ -60,6 +60,7 @@ export default function TaskAttachmentsSection({
 }: TaskAttachmentsSectionProps) {
   const [attachments, setAttachments] = useState<TaskAttachment[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [displayName, setDisplayName] = useState("");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
@@ -126,9 +127,10 @@ export default function TaskAttachmentsSection({
     setSaving(true);
 
     try {
-      const data = await api.tasks.uploadTaskAttachment(taskId, file);
+      const data = await api.tasks.uploadTaskAttachment(taskId, file, displayName);
       setAttachments((current) => [...current, data.attachment]);
       setSelectedFile(null);
+      setDisplayName("");
       if (fileInputRef.current) fileInputRef.current.value = "";
       setSuccess("Attachment uploaded.");
     } catch (err) {
@@ -200,6 +202,18 @@ export default function TaskAttachmentsSection({
       )}
 
       <form className="task-attachment-form" onSubmit={handleUpload}>
+        <div className="form-group">
+          <label htmlFor={`task-attachment-name-${taskId}`}>Attachment name (optional)</label>
+          <input
+            id={`task-attachment-name-${taskId}`}
+            type="text"
+            value={displayName}
+            onChange={(event) => setDisplayName(event.target.value)}
+            disabled={saving}
+            maxLength={120}
+            placeholder="e.g. Project proposal"
+          />
+        </div>
         <div className="form-group">
           <label htmlFor={`task-attachment-${taskId}`}>Upload Attachment</label>
           <input

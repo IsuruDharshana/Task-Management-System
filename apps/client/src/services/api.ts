@@ -372,9 +372,12 @@ export const api = {
     async getTaskAttachments(taskId: string): Promise<{ attachments: TaskAttachment[] }> {
       return request(`/tasks/${taskId}/attachments`);
     },
-    async uploadTaskAttachment(taskId: string, file: File): Promise<{ attachment: TaskAttachment }> {
+    async uploadTaskAttachment(taskId: string, file: File, displayName?: string): Promise<{ attachment: TaskAttachment }> {
       const formData = new FormData();
       formData.append("file", file);
+      if (displayName?.trim()) {
+        formData.append("displayName", displayName.trim());
+      }
 
       return request(`/tasks/${taskId}/attachments`, {
         method: "POST",

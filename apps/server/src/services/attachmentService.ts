@@ -58,6 +58,11 @@ interface DeleteAttachmentInput {
   reason?: unknown;
 }
 
+interface AttachmentDisplayNameInput {
+  displayName?: unknown;
+  customFileName?: unknown;
+}
+
 const ATTACHMENT_SELECT =
   "id, task_id, uploaded_by, file_name, file_path, file_type, file_size, created_at, deleted_at, user:app_users!uploaded_by(id, name)";
 const ATTACHMENT_RECORD_SELECT =
@@ -76,6 +81,7 @@ export const ALLOWED_ATTACHMENT_MIME_TYPES = new Set([
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "application/zip",
 ]);
+const DISPLAY_NAME_MAX_LENGTH = 120;
 
 function mapAttachment(row: AttachmentRow): TaskAttachmentDTO {
   return {
@@ -107,6 +113,65 @@ function sanitizeFileName(fileName: string): string {
     .slice(0, 160);
 
   return safeName || "attachment";
+}
+
+function getOriginalFileExtension(fileName: string): string {
+  const baseName = fileName.split(/[\\/]/).pop()?.trim() || "";
+  const dotIndex = baseName.lastIndexOf(".");
+
+  if (dotIndex <= 0 || dotIndex === baseName.length - 1) {
+    return "";
+  }
+
+  return sanitizeFileName(baseName.slice(dotIndex));
+}
+
+function sanitizeDisplayName(value: string): string {
+  const safeName = value
+    .normalize("NFKD")
+    .replace(/[^\w.\- ]+/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/\.+/g, ".")
+    .replace(/^-+|-+$/g, "")
+    .replace(/^\.+|\.+$/g, "")
+    .slice(0, DISPLAY_NAME_MAX_LENGTH);
+
+  return safeName || "attachment";
+}
+
+function getSafeFileName(file: UploadFileInput, input?: AttachmentDisplayNameInput): string {
+  const customName =
+    input?.displayName !== undefined && input.displayName !== ""
+      ? input.displayName
+      : input?.customFileName;
+
+  if (customName === undefined || customName === null || customName === "") {
+    return sanitizeFileName(file.originalname);
+  }
+
+  if (typeof customName !== "string") {
+    throw new AppError(400, "INVALID_ATTACHMENT_NAME", "Attachment name must be a string.");
+  }
+
+  const trimmed = customName.trim();
+
+  if (!trimmed) {
+    return sanitizeFileName(file.originalname);
+  }
+
+  if (trimmed.length > DISPLAY_NAME_MAX_LENGTH) {
+    throw new AppError(
+      400,
+      "INVALID_ATTACHMENT_NAME",
+      `Attachment name must not exceed ${DISPLAY_NAME_MAX_LENGTH} characters.`
+    );
+  }
+
+  const extension = getOriginalFileExtension(file.originalname);
+  const safeDisplayName = sanitizeDisplayName(trimmed);
+  const safeFileName = `${safeDisplayName}${extension}`;
+
+  return safeFileName.slice(0, 160);
 }
 
 function validateUploadFile(file: UploadFileInput | undefined): UploadFileInput {
@@ -228,7 +293,8 @@ export async function listTaskAttachments(taskId: string, user: AuthUser): Promi
 export async function createTaskAttachment(
   taskId: string,
   fileInput: UploadFileInput | undefined,
-  user: AuthUser
+  user: AuthUser,
+  input?: AttachmentDisplayNameInput
 ): Promise<TaskAttachmentDTO> {
   requireNonAdmin(user);
   const task = await getActiveTask(taskId);
@@ -236,7 +302,7 @@ export async function createTaskAttachment(
 
   const file = validateUploadFile(fileInput);
   const attachmentId = randomUUID();
-  const safeFileName = sanitizeFileName(file.originalname);
+  const safeFileName = getSafeFileName(file, input);
   const filePath = `projects/${task.project_id}/tasks/${task.id}/${attachmentId}-${safeFileName}`;
 
   const { error: uploadError } = await supabaseAdmin.storage
