@@ -5,6 +5,7 @@ dotenv.config();
 const requiredEnvVariables = [
   "SUPABASE_URL",
   "SUPABASE_SERVICE_ROLE_KEY",
+  "SUPABASE_STORAGE_BUCKET",
   "JWT_SECRET",
 ] as const;
 
@@ -20,6 +21,7 @@ export const env = {
 
   supabaseUrl: process.env.SUPABASE_URL as string,
   supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY as string,
+  supabaseStorageBucket: process.env.SUPABASE_STORAGE_BUCKET as string,
 
   jwtSecret: process.env.JWT_SECRET as string,
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || "1d",
