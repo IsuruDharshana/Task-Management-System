@@ -17,7 +17,9 @@ async function request(path: string, options: RequestInit = {}) {
 
   // Default headers
   const headers = new Headers(options.headers);
-  if (options.body && !(options.body instanceof FormData)) {
+  if (options.body instanceof FormData) {
+    headers.delete("Content-Type");
+  } else if (options.body) {
     if (!headers.has("Content-Type")) {
       headers.set("Content-Type", "application/json");
     }
@@ -131,6 +133,17 @@ export interface TaskComment {
   commentText: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface TaskAttachment {
+  id: string;
+  taskId: string;
+  uploadedBy: string;
+  uploadedByName: string;
+  fileName: string;
+  fileType: string | null;
+  fileSize: number | null;
+  createdAt: string;
 }
 
 export interface TaskListParams {
@@ -352,6 +365,32 @@ export const api = {
     },
     async deleteTaskComment(commentId: string, reason?: string): Promise<void> {
       return request(`/comments/${commentId}`, {
+        method: "DELETE",
+        body: JSON.stringify({ reason }),
+      });
+    },
+    async getTaskAttachments(taskId: string): Promise<{ attachments: TaskAttachment[] }> {
+      return request(`/tasks/${taskId}/attachments`);
+    },
+    async uploadTaskAttachment(taskId: string, file: File, displayName?: string): Promise<{ attachment: TaskAttachment }> {
+      const formData = new FormData();
+      formData.append("file", file);
+      if (displayName?.trim()) {
+        formData.append("displayName", displayName.trim());
+      }
+
+      return request(`/tasks/${taskId}/attachments`, {
+        method: "POST",
+        body: formData,
+      });
+    },
+    async createAttachmentDownloadUrl(attachmentId: string): Promise<{ signedUrl: string; expiresIn: number }> {
+      return request(`/attachments/${attachmentId}/download-url`, {
+        method: "POST",
+      });
+    },
+    async deleteTaskAttachment(attachmentId: string, reason?: string): Promise<void> {
+      return request(`/attachments/${attachmentId}`, {
         method: "DELETE",
         body: JSON.stringify({ reason }),
       });
