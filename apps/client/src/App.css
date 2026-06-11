@@ -1090,9 +1090,14 @@ h3 {
   padding: 0;
 }
 
-.task-comments-section {
+.task-comments-section,
+.task-attachments-section {
   padding: 18px;
   text-align: left;
+}
+
+.task-attachments-section {
+  border-bottom: 1px solid var(--border);
 }
 
 .task-comments-header,
@@ -1115,7 +1120,8 @@ h3 {
   font-size: 16px;
 }
 
-.task-comment-form {
+.task-comment-form,
+.task-attachment-form {
   padding: 14px;
   margin-bottom: 16px;
   background: var(--bg);
@@ -1123,7 +1129,8 @@ h3 {
   border-radius: 8px;
 }
 
-.task-comment-form .form-group {
+.task-comment-form .form-group,
+.task-attachment-form .form-group {
   margin-bottom: 10px;
 }
 
@@ -1131,17 +1138,37 @@ h3 {
   justify-content: space-between;
 }
 
-.task-comments-list {
+.task-comments-list,
+.task-attachments-list {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.task-comment-item {
+.task-comment-item,
+.task-attachment-item {
   padding: 14px;
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 8px;
+}
+
+.task-attachment-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.task-attachment-main {
+  min-width: 0;
+}
+
+.task-attachment-main strong {
+  display: block;
+  color: var(--text-h);
+  overflow-wrap: anywhere;
+  margin-bottom: 6px;
 }
 
 .task-comment-meta {

@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import { env } from "./config/env.js";
 import { supabase } from "./config/supabase.js";
 import adminUserRoutes from "./routes/adminUserRoutes.js";
+import attachmentRoutes from "./routes/attachmentRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import commentRoutes from "./routes/commentRoutes.js";
 import projectRoutes from "./routes/projectRoutes.js";
@@ -53,6 +54,7 @@ app.use("/api/admin/users", adminUserRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/tasks", taskRoutes);
 app.use("/api/comments", commentRoutes);
+app.use("/api/attachments", attachmentRoutes);
 
 app.use(errorHandler);
 

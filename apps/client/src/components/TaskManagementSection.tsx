@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api, APIError } from "../services/api";
+import TaskAttachmentsSection from "./TaskAttachmentsSection";
 import TaskCommentsSection from "./TaskCommentsSection";
 import type {
   Member,
@@ -89,6 +90,7 @@ export default function TaskManagementSection({
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [commentsTaskId, setCommentsTaskId] = useState<string | null>(null);
+  const [attachmentsTaskId, setAttachmentsTaskId] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [assigneeToAdd, setAssigneeToAdd] = useState("");
 
@@ -248,6 +250,10 @@ export default function TaskManagementSection({
 
   const toggleComments = (taskId: string) => {
     setCommentsTaskId((current) => (current === taskId ? null : taskId));
+  };
+
+  const toggleAttachments = (taskId: string) => {
+    setAttachmentsTaskId((current) => (current === taskId ? null : taskId));
   };
 
   const handleAddAssignee = async () => {
@@ -624,6 +630,9 @@ export default function TaskManagementSection({
                           <button className="btn btn-secondary btn-xs" onClick={() => toggleComments(task.id)}>
                             {commentsTaskId === task.id ? "Hide Comments" : "Comments"}
                           </button>
+                          <button className="btn btn-secondary btn-xs" onClick={() => toggleAttachments(task.id)}>
+                            {attachmentsTaskId === task.id ? "Hide Attachments" : "Attachments"}
+                          </button>
                           {isProjectPM ? (
                             <>
                               <button className="btn btn-secondary btn-xs" onClick={() => openEditForm(task)}>
@@ -639,6 +648,17 @@ export default function TaskManagementSection({
                         </div>
                       </td>
                     </tr>
+                    {attachmentsTaskId === task.id && (
+                      <tr className="task-comments-row">
+                        <td colSpan={7}>
+                          <TaskAttachmentsSection
+                            taskId={task.id}
+                            currentUser={currentUser}
+                            isProjectPM={isProjectPM}
+                          />
+                        </td>
+                      </tr>
+                    )}
                     {commentsTaskId === task.id && (
                       <tr className="task-comments-row">
                         <td colSpan={7}>
