@@ -2,6 +2,10 @@ import { supabaseAdmin } from "../config/supabaseAdmin.js";
 import type { AuthUser, UserRole } from "../types/auth.js";
 import { AppError } from "../utils/appError.js";
 import { logActivity } from "./activityLogService.js";
+import {
+  notifyProjectMemberAdded,
+  notifyProjectUpdated,
+} from "./realtimeEventService.js";
 
 // Row types (DB shapes)
 
@@ -506,6 +510,7 @@ export async function updateProject(
   }
 
   const updatedProject = data as ProjectRow;
+  const changedFields = Object.keys(updates).filter((field) => !["updated_by", "updated_at"].includes(field));
 
   await logActivity({
     actorUserId: user.id,
@@ -515,9 +520,18 @@ export async function updateProject(
     metadata: {
       projectId,
       projectName: updatedProject.name,
-      changedFields: Object.keys(updates).filter((field) => !["updated_by", "updated_at"].includes(field)),
+      changedFields,
     },
   });
+
+  await notifyProjectUpdated(
+    {
+      projectId,
+      projectName: updatedProject.name,
+      actorUserId: user.id,
+    },
+    changedFields
+  );
 
   return mapProject(updatedProject);
 }
@@ -720,6 +734,15 @@ export async function addMember(
       projectRole: member.projectRole,
     },
   });
+
+  await notifyProjectMemberAdded(
+    {
+      projectId,
+      projectName: project.name,
+      actorUserId: user.id,
+    },
+    member.userId
+  );
 
   return member;
 }

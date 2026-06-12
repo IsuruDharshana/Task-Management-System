@@ -1,7 +1,8 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { api, APIError } from "../services/api";
 import TaskAttachmentsSection from "./TaskAttachmentsSection";
 import TaskCommentsSection from "./TaskCommentsSection";
+import { useSocket } from "../context/SocketContext";
 import type {
   Member,
   Task,
@@ -74,6 +75,7 @@ export default function TaskManagementSection({
   members,
   isProjectPM,
 }: TaskManagementSectionProps) {
+  const { socket } = useSocket();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
@@ -118,9 +120,49 @@ export default function TaskManagementSection({
     }
   };
 
+  const loadTasksRef = useRef(loadTasks);
+
+  useEffect(() => {
+    loadTasksRef.current = loadTasks;
+  });
+
   useEffect(() => {
     loadTasks();
   }, [projectId]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    let refreshTimer: number | undefined;
+    const scheduleRefresh = () => {
+      window.clearTimeout(refreshTimer);
+      refreshTimer = window.setTimeout(() => {
+        loadTasksRef.current();
+      }, 250);
+    };
+
+    const handleTaskEvent = (payload: { projectId?: string; taskId?: string }) => {
+      if (payload.projectId !== projectId) return;
+
+      if (payload.taskId && editingTask?.id === payload.taskId) {
+        setEditingTask(null);
+        closeForms();
+      }
+
+      scheduleRefresh();
+    };
+
+    socket.on("task:created", handleTaskEvent);
+    socket.on("task:updated", handleTaskEvent);
+    socket.on("task:deleted", handleTaskEvent);
+
+    return () => {
+      window.clearTimeout(refreshTimer);
+      socket.off("task:created", handleTaskEvent);
+      socket.off("task:updated", handleTaskEvent);
+      socket.off("task:deleted", handleTaskEvent);
+    };
+  }, [socket, projectId, editingTask?.id]);
 
   const summary = useMemo(() => {
     return {

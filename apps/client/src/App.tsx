@@ -3,6 +3,7 @@ import { api } from "./services/api";
 import type { User } from "./services/api";
 import { RouterProvider, useRouter, useRouteMatch } from "./components/Router";
 import Login from "./components/Login";
+import Dashboard from "./components/Dashboard";
 import ProjectsList from "./components/ProjectsList";
 import CreateProject from "./components/CreateProject";
 import ProjectDetails from "./components/ProjectDetails";
@@ -10,11 +11,14 @@ import AdminPanel from "./components/AdminPanel";
 import ActivityLogSection from "./components/ActivityLogSection";
 import FirstLoginPasswordResetPage from "./components/FirstLoginPasswordResetPage";
 import SettingsPage from "./components/SettingsPage";
+import NotificationBell from "./components/NotificationBell";
+import { SocketProvider } from "./context/SocketContext";
+import { NotificationProvider } from "./context/NotificationContext";
 import "./App.css";
 
 function getHomePath(user: User): string {
   if (user.role === "admin") return "/admin";
-  return "/projects";
+  return "/dashboard";
 }
 
 function AppContent() {
@@ -65,6 +69,7 @@ function AppContent() {
   };
 
   // Route matches
+  const matchDashboard = useRouteMatch("/dashboard");
   const matchProjects = useRouteMatch("/projects");
   const matchCreateProject = useRouteMatch("/projects/new");
   const matchProjectDetails = useRouteMatch("/projects/:projectId");
@@ -113,6 +118,10 @@ function AppContent() {
           <p>Redirecting to your workspace...</p>
         </div>
       );
+    }
+
+    if (matchDashboard.matches) {
+      return <Dashboard currentUser={currentUser} />;
     }
 
     if (matchProjects.matches) {
@@ -165,7 +174,9 @@ function AppContent() {
   const isUserAdmin = currentUser.role === "admin";
 
   return (
-    <div className="app-shell">
+    <SocketProvider user={currentUser}>
+      <NotificationProvider user={currentUser}>
+        <div className="app-shell">
       {/* Top Navbar */}
       <header className="app-navbar">
         <div className="nav-brand" onClick={() => navigate("/")}>
@@ -175,12 +186,20 @@ function AppContent() {
 
         <nav className="nav-links">
           {!isUserAdmin && (
-            <button
-              onClick={() => navigate("/projects")}
-              className={`nav-item ${path.startsWith("/projects") ? "active" : ""}`}
-            >
-              Projects
-            </button>
+            <>
+              <button
+                onClick={() => navigate("/dashboard")}
+                className={`nav-item ${path === "/dashboard" ? "active" : ""}`}
+              >
+                Dashboard
+              </button>
+              <button
+                onClick={() => navigate("/projects")}
+                className={`nav-item ${path.startsWith("/projects") ? "active" : ""}`}
+              >
+                Projects
+              </button>
+            </>
           )}
           {isUserAdmin && (
             <button
@@ -205,6 +224,7 @@ function AppContent() {
         </nav>
 
         <div className="nav-profile">
+          <NotificationBell />
           <div className="profile-details">
             <span className="profile-name">{currentUser.name}</span>
             <span className="profile-role badge">{currentUser.role}</span>
@@ -224,7 +244,9 @@ function AppContent() {
       <footer className="app-footer">
         <p>&copy; {new Date().getFullYear()} Veyra Task Management System. All rights reserved.</p>
       </footer>
-    </div>
+        </div>
+      </NotificationProvider>
+    </SocketProvider>
   );
 }
 
