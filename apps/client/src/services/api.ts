@@ -185,6 +185,19 @@ export interface DeadlineAlertResult {
   notificationsCreated: NotificationDTO[];
 }
 
+export interface DashboardSummary {
+  totalProjects: number;
+  myTasks: number;
+  projectTasks: number;
+  todoTasks: number;
+  inProgressTasks: number;
+  completedTasks: number;
+  dueSoonTasks: number;
+  overdueTasks: number;
+  highPriorityTasks: number;
+  unreadNotifications: number;
+}
+
 export interface TaskListParams {
   status?: TaskStatus;
   priority?: TaskPriority;
@@ -486,6 +499,12 @@ export const api = {
       return request("/notifications/read-all", {
         method: "PATCH",
       });
+    },
+  },
+
+  dashboard: {
+    async getSummary(): Promise<{ summary: DashboardSummary }> {
+      return request("/dashboard/summary");
     },
   },
 
