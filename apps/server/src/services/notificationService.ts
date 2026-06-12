@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "../config/supabaseAdmin.js";
 import { emitToUser } from "../socket/socketRooms.js";
+import type { AuthUser } from "../types/auth.js";
 import { AppError } from "../utils/appError.js";
 
 export type NotificationType =
@@ -51,6 +52,24 @@ export type CreateNotificationForUsersInput = Omit<CreateNotificationInput, "use
 
 interface ListNotificationsOptions {
   limit?: unknown;
+}
+
+interface DeadlineTaskRow {
+  id: string;
+  project_id: string;
+  title: string;
+  status: string;
+  due_date: string | null;
+}
+
+interface DeadlineProjectRow {
+  id: string;
+  name: string;
+}
+
+export interface GenerateDeadlineAlertsResult {
+  createdCount: number;
+  notificationsCreated: NotificationDTO[];
 }
 
 const NOTIFICATION_SELECT =
@@ -126,6 +145,18 @@ function normalizeLimit(value: unknown): number {
   return Math.min(parsed, 100);
 }
 
+function getDeadlineAlertWindowHours(): number {
+  const parsed = Number(process.env.DEADLINE_ALERT_WINDOW_HOURS);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 48;
+}
+
+function formatDueDate(value: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
 async function emitNotificationState(userId: string, notification: NotificationDTO): Promise<void> {
   const unreadCount = await getUnreadNotificationCount(userId);
 
@@ -134,6 +165,66 @@ async function emitNotificationState(userId: string, notification: NotificationD
     unreadCount,
   });
   emitToUser(userId, "notification:unread-count", { unreadCount });
+}
+
+async function getAssignedTaskIds(userId: string): Promise<string[]> {
+  const { data, error } = await supabaseAdmin
+    .from("task_assignees")
+    .select("task_id")
+    .eq("user_id", userId)
+    .is("removed_at", null);
+
+  if (error) {
+    throw new AppError(500, "DATABASE_ERROR", "Failed to load assigned tasks.");
+  }
+
+  return [...new Set((data ?? []).map((assignment) => assignment.task_id))];
+}
+
+async function getActiveProjectsById(projectIds: string[]): Promise<Map<string, DeadlineProjectRow>> {
+  const projectsById = new Map<string, DeadlineProjectRow>();
+
+  if (projectIds.length === 0) {
+    return projectsById;
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("projects")
+    .select("id, name")
+    .in("id", projectIds)
+    .is("deleted_at", null);
+
+  if (error) {
+    throw new AppError(500, "DATABASE_ERROR", "Failed to load task projects.");
+  }
+
+  for (const project of (data ?? []) as DeadlineProjectRow[]) {
+    projectsById.set(project.id, project);
+  }
+
+  return projectsById;
+}
+
+async function hasRecentDeadlineNotification(userId: string, taskId: string): Promise<boolean> {
+  const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+  const { data, error } = await supabaseAdmin
+    .from("notifications")
+    .select("id, read_at, created_at")
+    .eq("user_id", userId)
+    .eq("type", "deadline_approaching")
+    .eq("entity_type", "task")
+    .eq("entity_id", taskId)
+    .order("created_at", { ascending: false })
+    .limit(10);
+
+  if (error) {
+    throw new AppError(500, "DATABASE_ERROR", "Failed to check deadline notifications.");
+  }
+
+  return (data ?? []).some(
+    (notification) => notification.read_at === null || notification.created_at >= dayAgo
+  );
 }
 
 export async function createNotification(input: CreateNotificationInput): Promise<NotificationDTO> {
@@ -179,6 +270,82 @@ export async function createNotificationsForUsers(
   }
 
   return notifications;
+}
+
+export async function generateApproachingDeadlineNotificationsForUser(
+  user: AuthUser
+): Promise<GenerateDeadlineAlertsResult> {
+  if (user.role === "admin") {
+    throw new AppError(403, "FORBIDDEN", "Admin users cannot generate task deadline alerts.");
+  }
+
+  const alertWindowHours = getDeadlineAlertWindowHours();
+  const now = new Date();
+  const windowEnd = new Date(now.getTime() + alertWindowHours * 60 * 60 * 1000);
+  const assignedTaskIds = await getAssignedTaskIds(user.id);
+
+  if (assignedTaskIds.length === 0) {
+    return { createdCount: 0, notificationsCreated: [] };
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("tasks")
+    .select("id, project_id, title, status, due_date")
+    .in("id", assignedTaskIds)
+    .is("deleted_at", null)
+    .neq("status", "completed")
+    .not("due_date", "is", null)
+    .gte("due_date", now.toISOString())
+    .lte("due_date", windowEnd.toISOString());
+
+  if (error) {
+    throw new AppError(500, "DATABASE_ERROR", "Failed to load approaching deadlines.");
+  }
+
+  const dueSoonTasks = (data ?? []) as DeadlineTaskRow[];
+  const projectsById = await getActiveProjectsById([
+    ...new Set(dueSoonTasks.map((task) => task.project_id)),
+  ]);
+  const notificationsCreated: NotificationDTO[] = [];
+
+  for (const task of dueSoonTasks) {
+    const project = projectsById.get(task.project_id);
+    if (!project || !task.due_date) continue;
+
+    const hasDuplicate = await hasRecentDeadlineNotification(user.id, task.id);
+    if (hasDuplicate) continue;
+
+    const notification = await createNotification({
+      userId: user.id,
+      type: "deadline_approaching",
+      title: "Task deadline approaching",
+      message: `"${task.title}" is due on ${formatDueDate(task.due_date)}.`,
+      entityType: "task",
+      entityId: task.id,
+      metadata: {
+        taskId: task.id,
+        taskTitle: task.title,
+        projectId: task.project_id,
+        projectName: project.name,
+        dueDate: task.due_date,
+        alertWindowHours,
+      },
+    });
+
+    notificationsCreated.push(notification);
+  }
+
+  if (notificationsCreated.length > 0) {
+    emitToUser(user.id, "dashboard:summary-updated", {
+      eventType: "deadline_alerts_generated",
+      createdCount: notificationsCreated.length,
+    });
+  }
+
+  return {
+    createdCount: notificationsCreated.length,
+    notificationsCreated,
+  };
 }
 
 export async function listNotificationsForUser(

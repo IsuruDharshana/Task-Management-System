@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  handleGenerateDeadlineAlerts,
   handleGetUnreadNotificationCount,
   handleListNotifications,
   handleMarkAllNotificationsAsRead,
@@ -13,6 +14,7 @@ const router = Router();
 router.use(requireAuth);
 router.get("/", asyncHandler(handleListNotifications));
 router.get("/unread-count", asyncHandler(handleGetUnreadNotificationCount));
+router.post("/generate-deadline-alerts", asyncHandler(handleGenerateDeadlineAlerts));
 router.patch("/read-all", asyncHandler(handleMarkAllNotificationsAsRead));
 router.patch("/:id/read", asyncHandler(handleMarkNotificationAsRead));
 

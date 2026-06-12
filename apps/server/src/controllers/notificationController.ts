@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import {
+  generateApproachingDeadlineNotificationsForUser,
   getUnreadNotificationCount,
   listNotificationsForUser,
   markAllNotificationsAsRead,
@@ -13,6 +14,14 @@ function getAuthenticatedUserId(req: Request): string {
   }
 
   return req.user.id;
+}
+
+function getAuthenticatedUser(req: Request) {
+  if (!req.user) {
+    throw new AppError(401, "UNAUTHENTICATED", "Authentication is required.");
+  }
+
+  return req.user;
 }
 
 export async function handleListNotifications(req: Request, res: Response): Promise<void> {
@@ -32,6 +41,16 @@ export async function handleGetUnreadNotificationCount(req: Request, res: Respon
   res.status(200).json({
     success: true,
     data: { unreadCount },
+  });
+}
+
+export async function handleGenerateDeadlineAlerts(req: Request, res: Response): Promise<void> {
+  const user = getAuthenticatedUser(req);
+  const result = await generateApproachingDeadlineNotificationsForUser(user);
+
+  res.status(200).json({
+    success: true,
+    data: result,
   });
 }
 

@@ -8,6 +8,7 @@ import adminUserRoutes from "./routes/adminUserRoutes.js";
 import attachmentRoutes from "./routes/attachmentRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import commentRoutes from "./routes/commentRoutes.js";
+import dashboardRoutes from "./routes/dashboardRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import projectRoutes from "./routes/projectRoutes.js";
 import taskRoutes from "./routes/taskRoutes.js";
@@ -59,6 +60,7 @@ app.use("/api/tasks", taskRoutes);
 app.use("/api/comments", commentRoutes);
 app.use("/api/attachments", attachmentRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/dashboard", dashboardRoutes);
 
 app.use(errorHandler);
 
