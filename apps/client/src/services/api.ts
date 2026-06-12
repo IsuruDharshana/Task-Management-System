@@ -1,4 +1,5 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5000/api";
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5000/api";
+export const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
 
 export class APIError extends Error {
   code: string;
@@ -155,6 +156,33 @@ export interface ActivityLog {
   entityId: string | null;
   metadata: Record<string, unknown>;
   createdAt: string;
+}
+
+export type NotificationType =
+  | "task_assigned"
+  | "task_updated"
+  | "task_status_changed"
+  | "comment_added"
+  | "deadline_approaching"
+  | "admin_update"
+  | "project_updated";
+
+export interface NotificationDTO {
+  id: string;
+  userId: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  entityType: string | null;
+  entityId: string | null;
+  metadata: Record<string, unknown>;
+  readAt: string | null;
+  createdAt: string;
+}
+
+export interface DeadlineAlertResult {
+  createdCount: number;
+  notificationsCreated: NotificationDTO[];
 }
 
 export interface TaskListParams {
@@ -430,6 +458,34 @@ export const api = {
 
       const queryString = query.toString();
       return request(`/activity-logs${queryString ? `?${queryString}` : ""}`);
+    },
+  },
+
+  notifications: {
+    async getNotifications(limit?: number): Promise<{ notifications: NotificationDTO[] }> {
+      const query = new URLSearchParams();
+      if (limit) query.set("limit", String(limit));
+
+      const queryString = query.toString();
+      return request(`/notifications${queryString ? `?${queryString}` : ""}`);
+    },
+    async getUnreadNotificationCount(): Promise<{ unreadCount: number }> {
+      return request("/notifications/unread-count");
+    },
+    async generateDeadlineAlerts(): Promise<DeadlineAlertResult> {
+      return request("/notifications/generate-deadline-alerts", {
+        method: "POST",
+      });
+    },
+    async markNotificationRead(notificationId: string): Promise<{ notification: NotificationDTO }> {
+      return request(`/notifications/${notificationId}/read`, {
+        method: "PATCH",
+      });
+    },
+    async markAllNotificationsRead(): Promise<{ updatedCount: number }> {
+      return request("/notifications/read-all", {
+        method: "PATCH",
+      });
     },
   },
 

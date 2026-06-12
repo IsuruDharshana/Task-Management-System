@@ -10,6 +10,9 @@ import AdminPanel from "./components/AdminPanel";
 import ActivityLogSection from "./components/ActivityLogSection";
 import FirstLoginPasswordResetPage from "./components/FirstLoginPasswordResetPage";
 import SettingsPage from "./components/SettingsPage";
+import NotificationBell from "./components/NotificationBell";
+import { SocketProvider } from "./context/SocketContext";
+import { NotificationProvider } from "./context/NotificationContext";
 import "./App.css";
 
 function getHomePath(user: User): string {
@@ -165,7 +168,9 @@ function AppContent() {
   const isUserAdmin = currentUser.role === "admin";
 
   return (
-    <div className="app-shell">
+    <SocketProvider user={currentUser}>
+      <NotificationProvider user={currentUser}>
+        <div className="app-shell">
       {/* Top Navbar */}
       <header className="app-navbar">
         <div className="nav-brand" onClick={() => navigate("/")}>
@@ -205,6 +210,7 @@ function AppContent() {
         </nav>
 
         <div className="nav-profile">
+          <NotificationBell />
           <div className="profile-details">
             <span className="profile-name">{currentUser.name}</span>
             <span className="profile-role badge">{currentUser.role}</span>
@@ -224,7 +230,9 @@ function AppContent() {
       <footer className="app-footer">
         <p>&copy; {new Date().getFullYear()} Veyra Task Management System. All rights reserved.</p>
       </footer>
-    </div>
+        </div>
+      </NotificationProvider>
+    </SocketProvider>
   );
 }
 
