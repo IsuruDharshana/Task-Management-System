@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { api, APIError } from "../services/api";
 import type { TaskComment, User } from "../services/api";
+import { useSocket } from "../context/SocketContext";
 
 interface TaskCommentsSectionProps {
   taskId: string;
@@ -30,6 +31,7 @@ export default function TaskCommentsSection({
   currentUser,
   isProjectPM,
 }: TaskCommentsSectionProps) {
+  const { socket } = useSocket();
   const [comments, setComments] = useState<TaskComment[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -39,7 +41,7 @@ export default function TaskCommentsSection({
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
 
-  const loadComments = async () => {
+  const loadComments = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -51,11 +53,32 @@ export default function TaskCommentsSection({
     } finally {
       setLoading(false);
     }
-  };
+  }, [taskId]);
 
   useEffect(() => {
     loadComments();
-  }, [taskId]);
+  }, [loadComments]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    let refreshTimer: number | undefined;
+    const handleCommentCreated = (payload: { taskId?: string }) => {
+      if (payload.taskId !== taskId) return;
+
+      window.clearTimeout(refreshTimer);
+      refreshTimer = window.setTimeout(() => {
+        loadComments();
+      }, 250);
+    };
+
+    socket.on("comment:created", handleCommentCreated);
+
+    return () => {
+      window.clearTimeout(refreshTimer);
+      socket.off("comment:created", handleCommentCreated);
+    };
+  }, [socket, taskId, loadComments]);
 
   const validateComment = (value: string) => {
     const trimmed = value.trim();

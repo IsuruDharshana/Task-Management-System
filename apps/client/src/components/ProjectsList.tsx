@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { api } from "../services/api";
 import type { Project, User } from "../services/api";
 import { useRouter } from "./Router";
+import { useSocket } from "../context/SocketContext";
 
 interface ProjectsListProps {
   currentUser: User;
@@ -9,11 +10,12 @@ interface ProjectsListProps {
 
 export default function ProjectsList({ currentUser }: ProjectsListProps) {
   const { navigate } = useRouter();
+  const { socket } = useSocket();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchProjects = async () => {
+  const fetchProjects = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -24,14 +26,28 @@ export default function ProjectsList({ currentUser }: ProjectsListProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (currentUser.role === "admin") {
       return;
     }
     fetchProjects();
-  }, [currentUser]);
+  }, [currentUser, fetchProjects]);
+
+  useEffect(() => {
+    if (!socket || currentUser.role === "admin") return;
+
+    const handleProjectUpdated = () => {
+      fetchProjects();
+    };
+
+    socket.on("project:updated", handleProjectUpdated);
+
+    return () => {
+      socket.off("project:updated", handleProjectUpdated);
+    };
+  }, [socket, currentUser.role, fetchProjects]);
 
   if (currentUser.role === "admin") {
     return (

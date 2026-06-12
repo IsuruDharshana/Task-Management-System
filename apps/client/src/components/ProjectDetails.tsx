@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useState, useEffect } from "react";
 import { api, APIError } from "../services/api";
 import type { Project, Member, User, EligibleMember } from "../services/api";
 import TaskManagementSection from "./TaskManagementSection";
 import { useRouter } from "./Router";
+import { useSocket } from "../context/SocketContext";
 
 interface ProjectDetailsProps {
   projectId: string;
@@ -11,6 +12,7 @@ interface ProjectDetailsProps {
 
 export default function ProjectDetails({ projectId, currentUser }: ProjectDetailsProps) {
   const { navigate } = useRouter();
+  const { socket } = useSocket();
 
   // Project state
   const [project, setProject] = useState<Project | null>(null);
@@ -42,7 +44,7 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
   const [editMemberLabel, setEditMemberLabel] = useState("");
   const [savingMember, setSavingMember] = useState(false);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -72,11 +74,27 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
     } finally {
       setLoading(false);
     }
-  };
+  }, [projectId, currentUser.id]);
 
   useEffect(() => {
     fetchData();
-  }, [projectId, currentUser.id]);
+  }, [fetchData]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleProjectUpdated = (payload: { projectId?: string }) => {
+      if (payload.projectId === projectId) {
+        fetchData();
+      }
+    };
+
+    socket.on("project:updated", handleProjectUpdated);
+
+    return () => {
+      socket.off("project:updated", handleProjectUpdated);
+    };
+  }, [socket, projectId, fetchData]);
 
   if (loading) {
     return (
