@@ -280,7 +280,7 @@ export async function createUserByAdmin(input: CreateUserInput, adminUserId: str
       loginUrl,
     });
   } catch (emailError) {
-    console.error("Failed to print Veyra development onboarding email.", emailError);
+    console.error("Failed to send Veyra onboarding email.", emailError);
   }
 
   await logActivity({
@@ -475,7 +475,7 @@ export async function resetUserPasswordByAdmin(
       loginUrl,
     });
   } catch (emailError) {
-    console.error("Failed to print Veyra development password reset email.", emailError);
+    console.error("Failed to send Veyra password reset email.", emailError);
   }
 
   await logActivity({

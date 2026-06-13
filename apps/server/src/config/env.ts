@@ -17,7 +17,7 @@ for (const envName of requiredEnvVariables) {
 
 export const env = {
   port: process.env.PORT || "5000",
-  clientUrl: process.env.CLIENT_URL || "http://localhost:5173",
+  clientUrl: process.env.CLIENT_URL || process.env.FRONTEND_URL || "http://localhost:5173",
 
   supabaseUrl: process.env.SUPABASE_URL as string,
   supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY as string,
@@ -27,5 +27,5 @@ export const env = {
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || "1d",
 
   resendApiKey: process.env.RESEND_API_KEY || "",
-  emailFrom: process.env.EMAIL_FROM || "",
+  emailFrom: process.env.MAIL_FROM || process.env.EMAIL_FROM || "",
 };
