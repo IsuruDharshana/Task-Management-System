@@ -1,0 +1,206 @@
+:root {
+  --veyra-primary: #296ef9;
+  --veyra-primary-hover: #1f5dde;
+  --veyra-deep-navy: #0e3191;
+  --veyra-light-blue: #c9e0fc;
+  --veyra-white: #ffffff;
+  --veyra-app-bg: #f6f8fc;
+  --veyra-surface: #ffffff;
+  --veyra-text: #0f172a;
+  --veyra-muted: #64748b;
+  --veyra-border: #d8e2f0;
+  --veyra-soft-border: #e2e8f0;
+  --veyra-danger: #dc2626;
+  --veyra-danger-soft: #fee2e2;
+  --veyra-success: #059669;
+  --veyra-success-soft: #d1fae5;
+  --veyra-warning: #d97706;
+  --veyra-warning-soft: #fef3c7;
+  --veyra-info-soft: #eaf2ff;
+
+  --veyra-font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --veyra-font-size-xs: 0.75rem;
+  --veyra-font-size-sm: 0.875rem;
+  --veyra-font-size-md: 1rem;
+  --veyra-font-size-lg: 1.125rem;
+  --veyra-font-size-xl: 1.5rem;
+  --veyra-font-size-2xl: 2rem;
+  --veyra-line-height: 1.5;
+
+  --veyra-radius-sm: 6px;
+  --veyra-radius-md: 8px;
+  --veyra-radius-lg: 12px;
+  --veyra-radius-xl: 18px;
+  --veyra-radius-pill: 999px;
+
+  --veyra-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --veyra-shadow-md: 0 12px 30px rgba(15, 23, 42, 0.08);
+  --veyra-shadow-lg: 0 22px 50px rgba(15, 23, 42, 0.12);
+
+  --veyra-sidebar-width: 276px;
+  --veyra-topbar-height: 72px;
+  --veyra-page-padding: 32px;
+  --veyra-card-padding: 24px;
+  --veyra-button-height: 44px;
+  --veyra-button-height-sm: 34px;
+  --veyra-input-height: 46px;
+  --veyra-table-cell-padding-y: 14px;
+  --veyra-table-cell-padding-x: 16px;
+  --veyra-badge-height: 24px;
+  --veyra-badge-padding-x: 10px;
+
+  --text: var(--veyra-muted);
+  --text-h: var(--veyra-text);
+  --bg: var(--veyra-surface);
+  --border: var(--veyra-border);
+  --code-bg: var(--veyra-app-bg);
+  --accent: var(--veyra-primary);
+  --accent-bg: rgba(41, 110, 249, 0.1);
+  --accent-border: rgba(41, 110, 249, 0.35);
+  --social-bg: #f8fbff;
+  --shadow: var(--veyra-shadow-md);
+  --sans: var(--veyra-font-sans);
+  --heading: var(--veyra-font-sans);
+  --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
+.veyra-page {
+  width: 100%;
+}
+
+.veyra-card {
+  background: var(--veyra-surface);
+  border: 1px solid var(--veyra-soft-border);
+  border-radius: var(--veyra-radius-lg);
+  box-shadow: var(--veyra-shadow-sm);
+  padding: var(--veyra-card-padding);
+}
+
+.veyra-button {
+  min-height: var(--veyra-button-height);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: var(--veyra-radius-md);
+  padding: 0 18px;
+  font: 700 var(--veyra-font-size-sm) / 1 var(--veyra-font-sans);
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.veyra-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+  transform: none;
+}
+
+.veyra-button-primary {
+  background: var(--veyra-primary);
+  color: var(--veyra-white);
+  box-shadow: 0 10px 22px rgba(41, 110, 249, 0.22);
+}
+
+.veyra-button-primary:hover:not(:disabled) {
+  background: var(--veyra-primary-hover);
+  transform: translateY(-1px);
+}
+
+.veyra-button-secondary {
+  background: var(--veyra-white);
+  color: var(--veyra-text);
+  border-color: var(--veyra-border);
+}
+
+.veyra-button-secondary:hover:not(:disabled) {
+  background: var(--veyra-app-bg);
+  border-color: var(--veyra-primary);
+}
+
+.veyra-button-danger {
+  background: var(--veyra-danger);
+  color: var(--veyra-white);
+}
+
+.veyra-button-danger:hover:not(:disabled) {
+  background: #b91c1c;
+}
+
+.veyra-button-ghost {
+  background: transparent;
+  color: var(--veyra-muted);
+}
+
+.veyra-button-ghost:hover:not(:disabled) {
+  background: var(--veyra-info-soft);
+  color: var(--veyra-primary);
+}
+
+.veyra-input,
+.veyra-select {
+  width: 100%;
+  min-height: var(--veyra-input-height);
+  border: 1px solid var(--veyra-border);
+  border-radius: var(--veyra-radius-md);
+  background: var(--veyra-white);
+  color: var(--veyra-text);
+  padding: 10px 14px;
+  font: 500 var(--veyra-font-size-sm) / 1.4 var(--veyra-font-sans);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.veyra-input:focus,
+.veyra-select:focus {
+  outline: none;
+  border-color: var(--veyra-primary);
+  box-shadow: 0 0 0 4px rgba(41, 110, 249, 0.16);
+}
+
+.veyra-badge {
+  min-height: var(--veyra-badge-height);
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--veyra-radius-pill);
+  padding: 2px var(--veyra-badge-padding-x);
+  border: 1px solid transparent;
+  font: 800 var(--veyra-font-size-xs) / 1 var(--veyra-font-sans);
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.veyra-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.veyra-table th,
+.veyra-table td {
+  padding: var(--veyra-table-cell-padding-y) var(--veyra-table-cell-padding-x);
+  border-bottom: 1px solid var(--veyra-soft-border);
+}
+
+.veyra-table th {
+  color: var(--veyra-muted);
+  background: #f8fbff;
+  font-size: var(--veyra-font-size-xs);
+  text-transform: uppercase;
+}
+
+.veyra-empty-state {
+  display: grid;
+  place-items: center;
+  gap: 10px;
+  min-height: 220px;
+  color: var(--veyra-muted);
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  :root {
+    --veyra-page-padding: 20px;
+    --veyra-card-padding: 20px;
+    --veyra-sidebar-width: 100%;
+  }
+}
