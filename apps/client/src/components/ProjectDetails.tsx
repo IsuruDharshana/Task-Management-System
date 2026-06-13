@@ -1,9 +1,10 @@
 import React, { useCallback, useState, useEffect } from "react";
 import { api, APIError } from "../services/api";
-import type { Project, Member, User, EligibleMember } from "../services/api";
+import type { Project, Member, User, EligibleMember, Task } from "../services/api";
 import TaskManagementSection from "./TaskManagementSection";
 import { useRouter } from "./Router";
 import { useSocket } from "../context/SocketContext";
+import { Badge, Button, LoadingState, UserAvatar } from "./ui";
 
 interface ProjectDetailsProps {
   projectId: string;
@@ -17,6 +18,7 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
   // Project state
   const [project, setProject] = useState<Project | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [eligibleUsers, setEligibleUsers] = useState<EligibleMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -50,10 +52,12 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
       setError(null);
       const projectData = await api.projects.get(projectId);
       const membersData = await api.members.list(projectId);
+      const tasksData = await api.tasks.list(projectId, { sortBy: "due_date", sortOrder: "asc" });
       const loadedMembers = membersData.members || [];
 
       setProject(projectData.project);
       setMembers(loadedMembers);
+      setTasks(tasksData.tasks || []);
 
       const loadedCurrentMember = loadedMembers.find((member) => member.userId === currentUser.id);
       if (loadedCurrentMember?.projectRole === "project_manager") {
@@ -97,12 +101,7 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
   }, [socket, projectId, fetchData]);
 
   if (loading) {
-    return (
-      <div className="loading-state">
-        <div className="spinner big"></div>
-        <p>Loading project details...</p>
-      </div>
-    );
+    return <LoadingState label="Loading project details..." />;
   }
 
   if (error || !project) {
@@ -129,6 +128,17 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
     (project.createdBy === currentUser.id || currentMember?.projectRole === "project_manager");
   const selectedEligibleUser = eligibleUsers.find((user) => user.id === addUserId);
   const selectedUserIsCollaborator = selectedEligibleUser?.role === "collaborator";
+  const projectManager = members.find((member) => member.projectRole === "project_manager");
+  const overviewStats = {
+    total: tasks.length,
+    todo: tasks.filter((task) => task.status === "to_do").length,
+    inProgress: tasks.filter((task) => task.status === "in_progress").length,
+    completed: tasks.filter((task) => task.status === "completed").length,
+    overdue: tasks.filter((task) => task.status !== "completed" && task.dueDate && new Date(task.dueDate).getTime() < Date.now()).length,
+  };
+  const upcomingDeadlines = tasks
+    .filter((task) => task.status !== "completed" && task.dueDate)
+    .slice(0, 4);
 
   const refreshMemberManagement = async () => {
     const membersData = await api.members.list(projectId);
@@ -290,11 +300,51 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
   };
 
   return (
-    <div className="project-details-page">
+    <div className="project-details-page veyra-page">
       <div className="detail-navigation">
         <button onClick={() => navigate("/projects")} className="btn-back">
           &larr; Back to projects list
         </button>
+      </div>
+
+      <div className="project-hero card">
+        <div>
+          <div className="project-hero-eyebrow">
+            <Badge variant={project.status}>{project.status}</Badge>
+            <span>Updated {formatDate(project.updatedAt)}</span>
+          </div>
+          <h1>{project.name}</h1>
+          <p>{project.description || "No description provided."}</p>
+        </div>
+        <div className="project-hero-actions">
+          <div className="avatar-stack">
+            {members.slice(0, 5).map((member) => (
+              <UserAvatar key={member.id} name={member.userName} size="sm" />
+            ))}
+          </div>
+          {isProjectPM && (
+            <>
+              <Button type="button" variant="secondary" onClick={() => setIsEditingProject(true)}>Edit Project</Button>
+              <Button type="button" onClick={() => document.getElementById("task-management-heading")?.scrollIntoView({ behavior: "smooth" })}>Create Task</Button>
+            </>
+          )}
+        </div>
+      </div>
+
+      <div className="project-overview-grid">
+        {[
+          ["Total tasks", overviewStats.total],
+          ["To Do", overviewStats.todo],
+          ["In Progress", overviewStats.inProgress],
+          ["Completed", overviewStats.completed],
+          ["Overdue", overviewStats.overdue],
+        ].map(([label, value]) => (
+          <article key={label} className="card modern-metric-card">
+            <span className="dashboard-card-label">{label}</span>
+            <strong className="dashboard-card-value">{value}</strong>
+            <span className="dashboard-card-helper">Project task overview</span>
+          </article>
+        ))}
       </div>
 
       <div className="details-grid">
@@ -303,15 +353,17 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
           {!isEditingProject ? (
             <div className="card project-info-card">
               <div className="project-card-header">
-                <span className={`status-badge status-${project.status}`}>
-                  {project.status}
-                </span>
+                <Badge variant={project.status}>{project.status}</Badge>
               </div>
               
-              <h1>{project.name}</h1>
+              <h2>Overview</h2>
               <p className="project-desc">{project.description || "No description provided."}</p>
 
               <div className="project-dates-section">
+                <div className="date-tile">
+                  <span className="tile-label">Project Manager</span>
+                  <span className="tile-value">{projectManager?.userName || "Not assigned"}</span>
+                </div>
                 <div className="date-tile">
                   <span className="tile-label">Start Date</span>
                   <span className="tile-value">{formatDate(project.startDate)}</span>
@@ -324,12 +376,8 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
 
               {isProjectPM && (
                 <div className="project-management-actions">
-                  <button className="btn btn-secondary btn-sm" onClick={() => setIsEditingProject(true)}>
-                    Edit Settings
-                  </button>
-                  <button className="btn btn-danger btn-sm" onClick={handleDeleteProject}>
-                    Delete Project
-                  </button>
+                  <Button type="button" variant="secondary" onClick={() => setIsEditingProject(true)}>Edit Settings</Button>
+                  <Button type="button" variant="danger" onClick={handleDeleteProject}>Delete Project</Button>
                 </div>
               )}
             </div>
@@ -428,6 +476,25 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
 
         {/* Right Column: Member Management */}
         <div className="details-side-col">
+          <div className="card">
+            <h2>Upcoming Deadlines</h2>
+            <div className="dashboard-task-list compact">
+              {upcomingDeadlines.length === 0 ? (
+                <p className="muted-text">No upcoming deadlines.</p>
+              ) : (
+                upcomingDeadlines.map((task) => (
+                  <article key={task.id} className="dashboard-task-item">
+                    <div>
+                      <strong>{task.title}</strong>
+                      <span>Due {formatDate(task.dueDate)}</span>
+                    </div>
+                    <Badge variant={task.priority}>{task.priority}</Badge>
+                  </article>
+                ))
+              )}
+            </div>
+          </div>
+
           {/* Members list */}
           <div className="card members-card">
             <h2>Project Members ({members.length})</h2>
@@ -447,9 +514,7 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
 
                 return (
                   <div key={member.id} className="member-item">
-                    <div className="member-avatar">
-                      {member.userName.charAt(0).toUpperCase() || "?"}
-                    </div>
+                    <UserAvatar name={member.userName} />
 
                     <div className="member-info">
                       <div className="member-name-row">
@@ -463,9 +528,7 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
                       {/* Display label and role */}
                       {!isEditingThis ? (
                         <div className="member-badges-row">
-                          <span className={`badge ${isPMUser ? "badge-primary" : "badge-secondary"}`}>
-                            {isPMUser ? "Project Manager" : "Collaborator"}
-                          </span>
+                          <Badge variant={member.projectRole}>{isPMUser ? "Project Manager" : "Collaborator"}</Badge>
                           {member.projectLabel && (
                             <span className="badge badge-label">{member.projectLabel}</span>
                           )}
@@ -619,6 +682,10 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
           )}
         </div>
       </div>
+
+      {currentUser.role !== "admin" && (
+        <div id="task-management-heading" />
+      )}
 
       {currentUser.role !== "admin" && (
         <TaskManagementSection

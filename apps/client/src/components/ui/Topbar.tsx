@@ -1,5 +1,6 @@
 import type { User } from "../../services/api";
 import NotificationBell from "../NotificationBell";
+import Badge from "./Badge";
 import Button from "./Button";
 import UserAvatar from "./UserAvatar";
 
@@ -23,6 +24,7 @@ export default function Topbar({ currentUser, onLogout }: TopbarProps) {
             <strong>{currentUser.name}</strong>
             <span>{currentUser.email}</span>
           </div>
+          <Badge variant={currentUser.role}>{currentUser.role.replace("_", " ")}</Badge>
         </div>
         <Button type="button" variant="secondary" onClick={onLogout}>
           Sign Out

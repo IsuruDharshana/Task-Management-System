@@ -1784,6 +1784,7 @@ h3 {
   min-width: 0;
   display: flex;
   flex-direction: column;
+  margin-left: var(--veyra-sidebar-width);
 }
 
 .app-main-content {
@@ -1792,8 +1793,10 @@ h3 {
 }
 
 .veyra-sidebar {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  width: var(--veyra-sidebar-width);
   height: 100vh;
   display: flex;
   flex-direction: column;
@@ -1857,7 +1860,7 @@ h3 {
 
 .veyra-sidebar-link:hover,
 .veyra-sidebar-link.active {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--veyra-primary);
   color: var(--veyra-white);
   border-color: rgba(255, 255, 255, 0.14);
 }
@@ -1873,6 +1876,19 @@ h3 {
 .veyra-sidebar-link.active .veyra-sidebar-link-dot {
   background: var(--veyra-light-blue);
   opacity: 1;
+}
+
+.veyra-sidebar-icon {
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  background: rgba(201, 224, 252, 0.16);
+  color: var(--veyra-light-blue);
+  font-size: 11px;
+  font-weight: 900;
 }
 
 .veyra-sidebar-footer {
@@ -1938,6 +1954,10 @@ h3 {
   background: var(--veyra-white);
 }
 
+.veyra-topbar-user .veyra-badge {
+  margin-left: 4px;
+}
+
 .veyra-topbar-user div {
   display: grid;
   line-height: 1.2;
@@ -1991,6 +2011,13 @@ h3 {
 
 .veyra-button-full {
   width: 100%;
+}
+
+.veyra-button.btn-xs {
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 7px;
+  font-size: 11px;
 }
 
 .veyra-field {
@@ -2440,6 +2467,385 @@ h3 {
   color: var(--veyra-text);
 }
 
+.modern-page-header,
+.section-heading-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.modern-page-header h1,
+.section-heading-row h1 {
+  margin: 0 0 6px;
+  font-size: 32px;
+  font-weight: 900;
+  color: var(--veyra-text);
+}
+
+.header-actions,
+.project-hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.modern-metrics-grid,
+.admin-dashboard-grid,
+.project-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.project-overview-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.modern-metric-card {
+  min-height: 132px;
+  margin-bottom: 0;
+  border-radius: 14px;
+}
+
+.modern-metric-card:hover,
+.modern-project-card:hover,
+.dashboard-project-row:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--veyra-shadow-md);
+}
+
+.dashboard-work-grid,
+.admin-insight-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.75fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.admin-insight-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 24px;
+}
+
+.dashboard-side-stack {
+  display: grid;
+  gap: 24px;
+}
+
+.dashboard-project-list,
+.dashboard-task-list,
+.attention-list,
+.activity-mini-list {
+  display: grid;
+  gap: 12px;
+}
+
+.dashboard-project-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid var(--veyra-soft-border);
+  border-radius: 14px;
+  background: #fbfdff;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.project-row-title,
+.project-card-header,
+.project-progress-block > div,
+.project-card-footer,
+.user-cell,
+.attention-list article,
+.activity-mini-list article,
+.dashboard-task-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dashboard-project-row p,
+.project-desc {
+  color: var(--veyra-muted);
+  line-height: 1.55;
+}
+
+.project-row-meta {
+  display: grid;
+  gap: 6px;
+  min-width: 120px;
+  color: var(--veyra-muted);
+  font-size: 12px;
+  text-align: right;
+}
+
+.project-row-meta span:last-child {
+  color: var(--veyra-primary);
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.project-progress-track {
+  width: 100%;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #eaf2ff;
+  margin-top: 12px;
+}
+
+.project-progress-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--veyra-primary);
+}
+
+.dashboard-task-item {
+  justify-content: space-between;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--veyra-soft-border);
+}
+
+.dashboard-task-item:last-child {
+  border-bottom: 0;
+}
+
+.dashboard-task-item div {
+  display: grid;
+  gap: 2px;
+}
+
+.dashboard-task-item strong,
+.activity-mini-list strong,
+.attention-list strong,
+.user-cell strong {
+  color: var(--veyra-text);
+  font-size: 14px;
+}
+
+.dashboard-task-item span,
+.activity-mini-list span,
+.attention-list span,
+.user-cell span {
+  color: var(--veyra-muted);
+  font-size: 12px;
+}
+
+.activity-mini-list article,
+.attention-list article {
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--veyra-soft-border);
+}
+
+.activity-mini-list article {
+  justify-content: flex-start;
+}
+
+.activity-mini-list article:last-child,
+.attention-list article:last-child {
+  border-bottom: 0;
+}
+
+.attention-badges {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.role-distribution {
+  display: grid;
+  gap: 14px;
+}
+
+.role-distribution div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--veyra-soft-border);
+  color: var(--veyra-muted);
+  text-transform: capitalize;
+}
+
+.role-distribution div:last-child {
+  border-bottom: 0;
+}
+
+.role-distribution strong {
+  color: var(--veyra-primary);
+  font-size: 22px;
+}
+
+.admin-create-panel {
+  margin-bottom: 24px;
+}
+
+.admin-create-form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  align-items: end;
+}
+
+.admin-create-form .alert,
+.admin-create-form .form-actions {
+  grid-column: 1 / -1;
+}
+
+.admin-users-card {
+  margin-bottom: 0;
+}
+
+.admin-user-toolbar,
+.project-toolbar {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.3fr) repeat(3, minmax(150px, 0.7fr));
+  gap: 16px;
+  align-items: end;
+  margin-bottom: 22px;
+}
+
+.project-toolbar {
+  grid-template-columns: minmax(260px, 1fr) minmax(180px, 240px);
+}
+
+.project-status-filter {
+  display: grid;
+  gap: 8px;
+}
+
+.project-status-filter label {
+  color: var(--veyra-text);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.modern-users-table td {
+  vertical-align: middle;
+}
+
+.user-cell {
+  min-width: 190px;
+}
+
+.modern-projects-grid {
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+}
+
+.modern-project-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+}
+
+.project-card-hit {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.modern-project-card > *:not(.project-card-hit) {
+  position: relative;
+  z-index: 1;
+}
+
+.project-updated {
+  margin-left: auto;
+  color: var(--veyra-muted);
+  font-size: 12px;
+}
+
+.project-progress-block {
+  margin: 18px 0;
+}
+
+.project-progress-block > div:first-child {
+  justify-content: space-between;
+  color: var(--veyra-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.project-progress-block strong {
+  color: var(--veyra-primary);
+  font-size: 18px;
+}
+
+.avatar-stack {
+  display: flex;
+  align-items: center;
+}
+
+.avatar-stack .veyra-avatar {
+  margin-right: -8px;
+  border: 2px solid var(--veyra-white);
+}
+
+.avatar-overflow {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 2px;
+  border-radius: 999px;
+  background: var(--veyra-app-bg);
+  color: var(--veyra-muted);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.project-hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+  margin-bottom: 24px;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
+}
+
+.project-hero h1 {
+  margin: 12px 0 8px;
+  font-size: 34px;
+  font-weight: 900;
+}
+
+.project-hero p {
+  max-width: 760px;
+  color: var(--veyra-muted);
+}
+
+.project-hero-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--veyra-muted);
+  font-size: 13px;
+}
+
+.project-hero-actions {
+  justify-content: flex-end;
+  min-width: 280px;
+}
+
+.project-info-card h2 {
+  margin-top: 0;
+}
+
 @media (max-width: 1100px) {
   .veyra-app-layout {
     grid-template-columns: 1fr;
@@ -2447,6 +2853,7 @@ h3 {
 
   .veyra-sidebar {
     position: static;
+    width: 100%;
     height: auto;
     padding: 18px 20px;
   }
@@ -2468,6 +2875,23 @@ h3 {
 
   .veyra-topbar {
     position: static;
+  }
+
+  .veyra-content-shell {
+    margin-left: 0;
+  }
+
+  .modern-metrics-grid,
+  .admin-dashboard-grid,
+  .project-overview-grid,
+  .admin-insight-grid,
+  .dashboard-work-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .admin-user-toolbar,
+  .admin-create-form {
+    grid-template-columns: 1fr 1fr;
   }
 }
 
@@ -2500,6 +2924,28 @@ h3 {
 
   .login-header {
     text-align: center;
+  }
+
+  .modern-page-header,
+  .section-heading-row,
+  .project-hero {
+    flex-direction: column;
+  }
+
+  .modern-metrics-grid,
+  .admin-dashboard-grid,
+  .project-overview-grid,
+  .admin-insight-grid,
+  .dashboard-work-grid,
+  .admin-user-toolbar,
+  .admin-create-form,
+  .project-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .project-hero-actions {
+    min-width: 0;
+    justify-content: flex-start;
   }
 }
 

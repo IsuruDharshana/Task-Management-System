@@ -6,6 +6,7 @@ interface NavItem {
   label: string;
   path: string;
   active: boolean;
+  icon?: string;
 }
 
 interface SidebarProps {
@@ -27,12 +28,13 @@ export default function Sidebar({ currentUser, navItems, onNavigate }: SidebarPr
         <nav className="veyra-sidebar-nav" aria-label="Main navigation">
           {navItems.map((item) => (
             <button
-              key={item.path}
+              key={`${item.label}-${item.path}`}
               type="button"
               className={`veyra-sidebar-link ${item.active ? "active" : ""}`}
               onClick={() => onNavigate(item.path)}
             >
               <span className="veyra-sidebar-link-dot" aria-hidden="true" />
+              {item.icon && <span className="veyra-sidebar-icon" aria-hidden="true">{item.icon}</span>}
               {item.label}
             </button>
           ))}

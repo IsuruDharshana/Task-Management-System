@@ -19,20 +19,29 @@ export default function AppLayout({
   children,
 }: AppLayoutProps) {
   const isAdmin = currentUser.role === "admin";
-  const navItems = [
-    ...(!isAdmin
-      ? [
-          { label: "Dashboard", path: "/dashboard", active: path === "/dashboard" },
-          { label: "Projects", path: "/projects", active: path.startsWith("/projects") },
-        ]
-      : [{ label: "Admin Workspace", path: "/admin", active: path === "/admin" }]),
-    {
-      label: isAdmin ? "Audit Log" : "Activity Log",
-      path: "/activity-log",
-      active: path === "/activity-log",
-    },
-    { label: "Settings", path: "/settings", active: path === "/settings" },
-  ];
+  const isProjectManager = currentUser.role === "project_manager";
+  const navItems = isAdmin
+    ? [
+        { label: "Dashboard", path: "/admin", active: path === "/admin", icon: "D" },
+        { label: "Users", path: "/admin", active: path === "/admin", icon: "U" },
+        { label: "Notifications", path: "/activity-log", active: path === "/activity-log", icon: "N" },
+        { label: "System Settings", path: "/settings", active: path === "/settings", icon: "S" },
+        { label: "Settings", path: "/settings", active: path === "/settings", icon: "P" },
+      ]
+    : [
+        { label: "Dashboard", path: "/dashboard", active: path === "/dashboard", icon: "D" },
+        {
+          label: isProjectManager ? "Projects" : "My Tasks",
+          path: "/projects",
+          active: path.startsWith("/projects"),
+          icon: isProjectManager ? "P" : "T",
+        },
+        ...(isProjectManager
+          ? [{ label: "Tasks", path: "/projects", active: path.startsWith("/projects"), icon: "T" }]
+          : []),
+        { label: "Notifications", path: "/activity-log", active: path === "/activity-log", icon: "N" },
+        { label: "Settings", path: "/settings", active: path === "/settings", icon: "S" },
+      ];
 
   return (
     <div className="app-shell veyra-app-layout">
