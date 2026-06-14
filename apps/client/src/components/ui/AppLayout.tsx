@@ -22,33 +22,33 @@ export default function AppLayout({
   const isProjectManager = currentUser.role === "project_manager";
   const navItems = isAdmin
     ? [
-        { label: "Dashboard", path: "/admin", active: path === "/admin", icon: "D" },
-        { label: "Users", path: "/admin", active: path === "/admin", icon: "U" },
-        { label: "Notifications", path: "/activity-log", active: path === "/activity-log", icon: "N" },
-        { label: "System Settings", path: "/settings", active: path === "/settings", icon: "S" },
-        { label: "Settings", path: "/settings", active: path === "/settings", icon: "P" },
+        { label: "Dashboard", path: "/admin", active: path === "/admin", icon: "dashboard" },
+        { label: "Users", path: "/admin", active: path === "/admin", icon: "users" },
+        { label: "Notifications", path: "/notifications", active: path === "/notifications", icon: "notifications" },
+        { label: "System Settings", path: "/settings", active: path === "/settings", icon: "sliders" },
+        { label: "Settings", path: "/settings", active: path === "/settings", icon: "settings" },
       ]
     : [
-        { label: "Dashboard", path: "/dashboard", active: path === "/dashboard", icon: "D" },
+        { label: "Dashboard", path: "/dashboard", active: path === "/dashboard", icon: "dashboard" },
         {
           label: isProjectManager ? "Projects" : "My Tasks",
           path: "/projects",
           active: path.startsWith("/projects"),
-          icon: isProjectManager ? "P" : "T",
+          icon: isProjectManager ? "projects" : "tasks",
         },
         ...(isProjectManager
-          ? [{ label: "Tasks", path: "/projects", active: path.startsWith("/projects"), icon: "T" }]
+          ? [{ label: "Audit Log", path: "/activity-log", active: path === "/activity-log", icon: "audit" }]
           : []),
-        { label: "Notifications", path: "/activity-log", active: path === "/activity-log", icon: "N" },
-        { label: "Settings", path: "/settings", active: path === "/settings", icon: "S" },
+        { label: "Notifications", path: "/notifications", active: path === "/notifications", icon: "notifications" },
+        { label: "Settings", path: "/settings", active: path === "/settings", icon: "settings" },
       ];
 
   return (
     <div className="app-shell veyra-app-layout">
       <Sidebar currentUser={currentUser} navItems={navItems} onNavigate={onNavigate} />
-      <div className="veyra-content-shell">
+      <div className="app-main veyra-content-shell">
         <Topbar currentUser={currentUser} onLogout={onLogout} />
-        <main className="app-main-content">{children}</main>
+        <main className="app-content page-content app-main-content">{children}</main>
       </div>
     </div>
   );

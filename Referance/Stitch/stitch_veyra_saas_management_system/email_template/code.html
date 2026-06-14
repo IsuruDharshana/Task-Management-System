@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Welcome to Veyra</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container": "#eceef3",
+                    "secondary-fixed-dim": "#b7c4ff",
+                    "outline": "#737686",
+                    "inverse-surface": "#2d3135",
+                    "background": "#f7f9fe",
+                    "secondary-fixed": "#dce1ff",
+                    "on-error": "#ffffff",
+                    "inverse-on-surface": "#eff1f6",
+                    "surface-container-high": "#e6e8ed",
+                    "secondary-container": "#819bff",
+                    "on-tertiary-container": "#00060f",
+                    "error": "#ba1a1a",
+                    "on-tertiary-fixed": "#031d32",
+                    "on-secondary-fixed-variant": "#213e9d",
+                    "on-background": "#181c20",
+                    "surface-variant": "#e0e2e7",
+                    "primary-fixed": "#dae1ff",
+                    "on-surface": "#181c20",
+                    "on-primary-container": "#fefcff",
+                    "surface": "#f7f9fe",
+                    "on-surface-variant": "#424655",
+                    "inverse-primary": "#b3c5ff",
+                    "on-secondary": "#ffffff",
+                    "tertiary-fixed": "#cfe5ff",
+                    "primary-container": "#246bf6",
+                    "on-primary-fixed-variant": "#003fa3",
+                    "on-secondary-fixed": "#001551",
+                    "on-primary-fixed": "#001849",
+                    "primary-fixed-dim": "#b3c5ff",
+                    "error-container": "#ffdad6",
+                    "surface-tint": "#0055d5",
+                    "surface-container-highest": "#e0e2e7",
+                    "tertiary": "#4a6078",
+                    "surface-container-lowest": "#ffffff",
+                    "tertiary-container": "#637992",
+                    "secondary": "#3d57b6",
+                    "primary": "#0053d0",
+                    "surface-bright": "#f7f9fe",
+                    "on-tertiary": "#ffffff",
+                    "on-secondary-container": "#062d8d",
+                    "outline-variant": "#c2c6d7",
+                    "surface-dim": "#d8dadf",
+                    "on-tertiary-fixed-variant": "#33495f",
+                    "surface-container-low": "#f1f4f9",
+                    "tertiary-fixed-dim": "#b2c9e4",
+                    "on-primary": "#ffffff",
+                    "on-error-container": "#93000a"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "margin-page": "2rem",
+                    "stack-component": "1rem",
+                    "inset-card": "1.5rem",
+                    "stack-section": "2.5rem",
+                    "gutter-grid": "1.5rem"
+            },
+            "fontFamily": {
+                    "label-md": ["Geist"],
+                    "headline-lg-mobile": ["Geist"],
+                    "title-lg": ["Geist"],
+                    "headline-md": ["Geist"],
+                    "headline-lg": ["Geist"],
+                    "display-lg": ["Geist"],
+                    "body-md": ["Geist"],
+                    "body-lg": ["Geist"]
+            },
+            "fontSize": {
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "title-lg": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        @font-face {
+            font-family: 'Geist';
+            src: url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        }
+        body { font-family: 'Geist', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .email-shadow {
+            box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.08);
+        }
+    </style>
+</head>
+<body class="bg-[#F6F8FC] min-h-screen py-10 px-4 flex justify-center items-start">
+<!-- Main Email Container -->
+<div class="w-full max-w-[600px] bg-white rounded-xl email-shadow overflow-hidden">
+<!-- Header -->
+<header class="flex items-center px-8 py-6 bg-surface-container-lowest">
+<img alt="Veyra Logo" class="h-8 w-auto mr-4" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAJFIOFx8RDs-44iE8awZpUEeYaqVsj0Od4IQbpuL9hbJ2214fJaYrFgBPj1Z3kZ1-Hu5wRDA_bOmgxIJHBRnp4lZ77eC0to4X5uyHlevuxYZjkJ2KC0VXLk1BLf6syAPglIwIBG0OpKyXouEGqXVpDX6aSTliGwiO1IIWhF16NNeKAuRdEwsHh_rKNUaNi1DyAsu598iYWW7S45cNL3AKlaWY6Vg2PM4tH55QlsisZcvAG4rG5RO_MBSkm8h_pV2kTLrW5VGD3WrI"/>
+<div class="flex flex-col">
+<span class="font-headline-md text-headline-md text-on-surface leading-none">Veyra</span>
+<span class="font-label-md text-label-md text-on-surface-variant">Task Management System</span>
+</div>
+</header>
+<!-- Hero Section -->
+<section class="relative h-48 flex flex-col justify-center px-8 overflow-hidden" style="background: linear-gradient(135deg, #0E3191 0%, #296EF9 100%);">
+<div class="z-10">
+<h1 class="font-headline-lg text-headline-lg text-white mb-2">Welcome to Veyra</h1>
+<p class="font-body-lg text-body-lg text-secondary-fixed opacity-90">Your workspace account is ready.</p>
+</div>
+<!-- Subtle atmospheric pattern -->
+<div class="absolute inset-0 opacity-10 pointer-events-none" style="background-image: radial-gradient(circle at 2px 2px, white 1px, transparent 0); background-size: 24px 24px;"></div>
+</section>
+<!-- Body Content -->
+<main class="px-8 py-10">
+<p class="font-body-lg text-body-lg text-on-surface mb-4">Hello Isuru Dharshana,</p>
+<p class="font-body-md text-body-md text-on-surface-variant mb-8">An administrator has created your Veyra account. You now have access to our high-performance enterprise workspace designed for maximum project clarity and organizational efficiency.</p>
+<!-- Credential Box -->
+<div class="bg-secondary-fixed/30 border border-[#C9E0FC] rounded-xl p-6 mb-8">
+<div class="space-y-4">
+<div>
+<p class="font-label-md text-label-md text-on-secondary-fixed-variant uppercase tracking-wider mb-1">Name</p>
+<p class="font-body-lg text-body-lg text-on-surface font-semibold">Isuru Dharshana</p>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-secondary-fixed-variant uppercase tracking-wider mb-1">Login email</p>
+<p class="font-body-lg text-body-lg text-on-surface">isurudharshanaofficial@gmail.com</p>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-secondary-fixed-variant uppercase tracking-wider mb-1">Temporary password</p>
+<div class="flex items-center space-x-2">
+<code class="font-mono bg-white px-3 py-1.5 rounded border border-outline-variant text-primary font-bold text-lg select-all">ecdE6%P4!E*E**iC</code>
+<button class="material-symbols-outlined text-outline hover:text-primary transition-colors cursor-pointer text-xl" title="Copy password">content_copy</button>
+</div>
+</div>
+</div>
+</div>
+<!-- CTA -->
+<div class="flex justify-center mb-8">
+<a class="bg-[#296EF9] hover:bg-[#1e5ad6] text-white font-title-lg text-title-lg px-12 py-4 rounded-full transition-all transform hover:scale-[1.02] shadow-lg flex items-center gap-2" href="#">
+                    Sign in to Veyra
+                    <span class="material-symbols-outlined">arrow_forward</span>
+</a>
+</div>
+<!-- Security Note -->
+<div class="flex gap-4 p-4 bg-surface-container-low rounded-lg items-start">
+<span class="material-symbols-outlined text-primary mt-0.5">security</span>
+<p class="font-body-md text-body-md text-on-surface-variant">
+                    For your security, you will be asked to create a new password after your first login. Do not share your temporary password with anyone.
+                </p>
+</div>
+</main>
+<!-- Footer -->
+<footer class="bg-surface-container-low border-t border-outline-variant px-8 py-8 text-center">
+<div class="mb-4">
+<span class="font-title-lg text-title-lg text-on-surface tracking-tight">Veyra</span>
+</div>
+<div class="flex justify-center space-x-6 mb-6">
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-secondary transition-colors" href="#">Privacy Policy</a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-secondary transition-colors" href="#">Terms of Service</a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-secondary transition-colors" href="#">Support Center</a>
+</div>
+<p class="font-label-md text-label-md text-on-surface-variant max-w-sm mx-auto opacity-70">
+                © 2026 Veyra. All rights reserved. This is an automated message, please do not reply.
+            </p>
+</footer>
+</div>
+<!-- Micro-interaction Script -->
+<script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const copyBtn = document.querySelector('button[title="Copy password"]');
+            const passwordField = document.querySelector('code');
+            
+            if (copyBtn && passwordField) {
+                copyBtn.addEventListener('click', () => {
+                    navigator.clipboard.writeText(passwordField.textContent.trim()).then(() => {
+                        copyBtn.textContent = 'check';
+                        copyBtn.classList.add('text-green-600');
+                        setTimeout(() => {
+                            copyBtn.textContent = 'content_copy';
+                            copyBtn.classList.remove('text-green-600');
+                        }, 2000);
+                    });
+                });
+            }
+        });
+    </script>
+</body></html>

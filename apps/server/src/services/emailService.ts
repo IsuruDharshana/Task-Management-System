@@ -1,4 +1,9 @@
 import nodemailer from "nodemailer";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { escapeHtml } from "../email/templates/baseEmailTemplate.js";
+import { buildWelcomeEmailHtml, buildWelcomeEmailText } from "../email/templates/welcomeEmailTemplate.js";
 
 interface TemporaryPasswordEmailInput {
   to: string;
@@ -11,6 +16,7 @@ interface EmailContent {
   subject: string;
   text: string;
   html: string;
+  attachments?: nodemailer.SendMailOptions["attachments"];
 }
 
 interface SmtpConfig {
@@ -23,6 +29,18 @@ interface SmtpConfig {
 }
 
 let transporter: nodemailer.Transporter | null = null;
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+function getWelcomeLogoPath(): string | null {
+  const candidates = [
+    path.resolve(process.cwd(), "apps/server/src/email/assets/Logo_transparent.png"),
+    path.resolve(process.cwd(), "src/email/assets/Logo_transparent.png"),
+    path.resolve(__dirname, "../email/assets/Logo_transparent.png"),
+  ];
+
+  return candidates.find((candidate) => fs.existsSync(candidate)) || null;
+}
 
 function getSmtpConfig(): SmtpConfig | null {
   const host = process.env.SMTP_HOST?.trim();
@@ -67,47 +85,60 @@ function getTransporter(config: SmtpConfig): nodemailer.Transporter {
   return transporter;
 }
 
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
+function getEmailLogoSource(canUseCid: boolean): { logoSrc: string | null; attachments?: nodemailer.SendMailOptions["attachments"] } {
+  const emailLogoUrl = process.env.EMAIL_LOGO_URL?.trim();
+
+  if (emailLogoUrl) {
+    return { logoSrc: emailLogoUrl };
+  }
+
+  const logoPath = getWelcomeLogoPath();
+
+  if (canUseCid && logoPath) {
+    return {
+      logoSrc: "cid:veyra-logo",
+      attachments: [
+        {
+          filename: "Logo_transparent.png",
+          path: logoPath,
+          cid: "veyra-logo",
+        },
+      ],
+    };
+  }
+
+  return { logoSrc: null };
 }
 
-function buildOnboardingEmail({
+function buildOnboardingEmail(
+  {
   to,
   name,
   temporaryPassword,
   loginUrl,
-}: TemporaryPasswordEmailInput): EmailContent {
+}: TemporaryPasswordEmailInput,
+  canUseCidLogo: boolean
+): EmailContent {
   const subject = "Welcome to Veyra";
+  const logo = getEmailLogoSource(canUseCidLogo);
 
   return {
     subject,
-    text: `Hello ${name},
-
-Your Veyra account has been created.
-
-Name: ${name}
-Login email / username: ${to}
-Temporary password: ${temporaryPassword}
-
-Login URL: ${loginUrl}
-
-You must reset your password after your first login.`,
-    html: `
-      <p>Hello ${escapeHtml(name)},</p>
-      <p>Your Veyra account has been created.</p>
-      <ul>
-        <li><strong>Name:</strong> ${escapeHtml(name)}</li>
-        <li><strong>Login email / username:</strong> ${escapeHtml(to)}</li>
-        <li><strong>Temporary password:</strong> ${escapeHtml(temporaryPassword)}</li>
-      </ul>
-      <p><a href="${escapeHtml(loginUrl)}">Log in to Veyra</a></p>
-      <p><strong>You must reset your password after your first login.</strong></p>
-    `,
+    text: buildWelcomeEmailText({
+      name,
+      email: to,
+      temporaryPassword,
+      loginUrl,
+      logoSrc: logo.logoSrc,
+    }),
+    html: buildWelcomeEmailHtml({
+      name,
+      email: to,
+      temporaryPassword,
+      loginUrl,
+      logoSrc: logo.logoSrc,
+    }),
+    attachments: logo.attachments,
   };
 }
 
@@ -162,7 +193,9 @@ async function sendEmailOrPrintFallback(
 To: ${input.to}
 Subject: ${content.subject}
 
-${content.text}
+Email delivery is not configured. Configure SMTP settings to send this message.
+Login URL: ${input.loginUrl}
+Temporary password omitted from logs.
 
 ========================================
 `);
@@ -175,6 +208,7 @@ ${content.text}
     subject: content.subject,
     text: content.text,
     html: content.html,
+    attachments: content.attachments,
   });
 
   console.info(`Sent Veyra email "${content.subject}" to ${input.to}.`);
@@ -187,7 +221,7 @@ export async function sendUserOnboardingEmail({
   loginUrl,
 }: TemporaryPasswordEmailInput): Promise<void> {
   const input = { to, name, temporaryPassword, loginUrl };
-  await sendEmailOrPrintFallback(input, buildOnboardingEmail(input), "USER ONBOARDING");
+  await sendEmailOrPrintFallback(input, buildOnboardingEmail(input, Boolean(getSmtpConfig())), "USER ONBOARDING");
 }
 
 export async function sendPasswordResetEmail({

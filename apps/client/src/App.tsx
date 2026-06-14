@@ -13,7 +13,7 @@ import FirstLoginPasswordResetPage from "./components/FirstLoginPasswordResetPag
 import SettingsPage from "./components/SettingsPage";
 import { SocketProvider } from "./context/SocketContext";
 import { NotificationProvider } from "./context/NotificationContext";
-import { AppLayout, LoadingState } from "./components/ui";
+import { AppLayout, ErrorState, LoadingState } from "./components/ui";
 import "./App.css";
 
 function getHomePath(user: User): string {
@@ -75,6 +75,7 @@ function AppContent() {
   const matchProjectDetails = useRouteMatch("/projects/:projectId");
   const matchAdmin = useRouteMatch("/admin");
   const matchActivityLog = useRouteMatch("/activity-log");
+  const matchNotifications = useRouteMatch("/notifications");
   const matchSettings = useRouteMatch("/settings");
 
   // Redirect to correct dashboard based on role on default root path '/'
@@ -136,9 +137,7 @@ function AppContent() {
       if (currentUser.role !== "admin") {
         return (
           <div className="unauthorized-container card">
-            <span className="unauthorized-icon">!</span>
-            <h2>Access Denied</h2>
-            <p>You do not have administrative privileges to access this page.</p>
+            <ErrorState title="Access Denied" message="You do not have administrative privileges to access this page." />
           </div>
         );
       }
@@ -146,7 +145,11 @@ function AppContent() {
     }
 
     if (matchActivityLog.matches) {
-      return <ActivityLogSection currentUser={currentUser} />;
+      return <ActivityLogSection currentUser={currentUser} mode="audit" />;
+    }
+
+    if (matchNotifications.matches) {
+      return <ActivityLogSection currentUser={currentUser} mode="notifications" />;
     }
 
     if (matchSettings.matches) {
@@ -156,12 +159,12 @@ function AppContent() {
     // fallback 404
     return (
       <div className="not-found-container card">
-        <span className="not-found-icon">?</span>
-        <h2>Page Not Found</h2>
-        <p>The page you are looking for does not exist or has been moved.</p>
-        <button onClick={() => navigate("/")} className="btn btn-primary" style={{ marginTop: "16px" }}>
-          Go to Dashboard
-        </button>
+        <ErrorState
+          title="Page Not Found"
+          message="The page you are looking for does not exist or has been moved."
+          actionLabel="Go to Dashboard"
+          onAction={() => navigate("/")}
+        />
       </div>
     );
   };

@@ -4,7 +4,8 @@ import type { Project, Member, User, EligibleMember, Task } from "../services/ap
 import TaskManagementSection from "./TaskManagementSection";
 import { useRouter } from "./Router";
 import { useSocket } from "../context/SocketContext";
-import { Badge, Button, LoadingState, UserAvatar } from "./ui";
+import { Badge, Button, ConfirmDialog, LoadingState, Modal, UserAvatar } from "./ui";
+import StatIcon from "./ui/StatIcon";
 
 interface ProjectDetailsProps {
   projectId: string;
@@ -39,12 +40,16 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
   const [addLabel, setAddLabel] = useState("");
   const [addingMember, setAddingMember] = useState(false);
   const [memberActionError, setMemberActionError] = useState<string | null>(null);
+  const [showAddMemberModal, setShowAddMemberModal] = useState(false);
+  const [workspaceTab, setWorkspaceTab] = useState<"tasks" | "members">("tasks");
 
   // Edit member row state
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
   const [editMemberRole, setEditMemberRole] = useState<"project_manager" | "collaborator">("collaborator");
   const [editMemberLabel, setEditMemberLabel] = useState("");
   const [savingMember, setSavingMember] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<null | { type: "delete-project" } | { type: "remove-member"; memberId: string; name: string }>(null);
+  const [confirmingAction, setConfirmingAction] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -176,19 +181,15 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
   };
 
   const handleDeleteProject = async () => {
-    const confirmDelete = window.confirm(
-      "Are you sure you want to soft-delete this project? This will archive the project and restrict its usage."
-    );
-    if (!confirmDelete) return;
-
-    const reason = window.prompt("Please enter a reason for deletion (optional):") || undefined;
-
+    setConfirmingAction(true);
     try {
-      await api.projects.delete(projectId, reason);
-      alert("Project deleted successfully.");
+      await api.projects.delete(projectId);
+      setConfirmAction(null);
       navigate("/projects");
     } catch (err: any) {
-      alert(`Delete failed: ${err.message}`);
+      setProjectUpdateError(err.message || "Delete failed.");
+    } finally {
+      setConfirmingAction(false);
     }
   };
 
@@ -219,6 +220,7 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
       setAddUserId("");
       setAddLabel("");
       setAddRole("collaborator");
+      setShowAddMemberModal(false);
 
       // Refresh members and eligible users
       await refreshMemberManagement();
@@ -265,14 +267,13 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
     }
   };
 
-  const handleRemoveMember = async (memberId: string, name: string) => {
-    const confirmRemove = window.confirm(`Are you sure you want to remove ${name} from this project?`);
-    if (!confirmRemove) return;
-
+  const handleRemoveMember = async (memberId: string) => {
     setMemberActionError(null);
+    setConfirmingAction(true);
 
     try {
       await api.members.remove(projectId, memberId);
+      setConfirmAction(null);
 
       // Refresh members list
       const membersData = await api.members.list(projectId);
@@ -283,6 +284,8 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
       } else {
         setMemberActionError("Failed to remove member.");
       }
+    } finally {
+      setConfirmingAction(false);
     }
   };
 
@@ -331,97 +334,80 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
         </div>
       </div>
 
-      <div className="project-overview-grid">
-        {[
-          ["Total tasks", overviewStats.total],
-          ["To Do", overviewStats.todo],
-          ["In Progress", overviewStats.inProgress],
-          ["Completed", overviewStats.completed],
-          ["Overdue", overviewStats.overdue],
-        ].map(([label, value]) => (
-          <article key={label} className="card modern-metric-card">
-            <span className="dashboard-card-label">{label}</span>
-            <strong className="dashboard-card-value">{value}</strong>
-            <span className="dashboard-card-helper">Project task overview</span>
-          </article>
-        ))}
-      </div>
+      <div className="project-summary-grid">
+        {!isEditingProject ? (
+          <div className="card project-info-card overview-card">
+            <div className="project-card-header">
+              <Badge variant={project.status}>{project.status}</Badge>
+            </div>
 
-      <div className="details-grid">
-        {/* Left Column: Project Overview / Edit Forms */}
-        <div className="details-main-col">
-          {!isEditingProject ? (
-            <div className="card project-info-card">
-              <div className="project-card-header">
-                <Badge variant={project.status}>{project.status}</Badge>
+            <h2>Overview</h2>
+            <p className="project-desc">{project.description || "No description provided."}</p>
+
+            <div className="project-dates-section">
+              <div className="date-tile">
+                <span className="tile-label">Project Manager</span>
+                <span className="tile-value">{projectManager?.userName || "Not assigned"}</span>
               </div>
-              
-              <h2>Overview</h2>
-              <p className="project-desc">{project.description || "No description provided."}</p>
-
-              <div className="project-dates-section">
-                <div className="date-tile">
-                  <span className="tile-label">Project Manager</span>
-                  <span className="tile-value">{projectManager?.userName || "Not assigned"}</span>
-                </div>
-                <div className="date-tile">
-                  <span className="tile-label">Start Date</span>
-                  <span className="tile-value">{formatDate(project.startDate)}</span>
-                </div>
-                <div className="date-tile">
-                  <span className="tile-label">Due Date</span>
-                  <span className="tile-value">{formatDate(project.dueDate)}</span>
-                </div>
+              <div className="date-tile">
+                <span className="tile-label">Start Date</span>
+                <span className="tile-value">{formatDate(project.startDate)}</span>
               </div>
+              <div className="date-tile">
+                <span className="tile-label">Due Date</span>
+                <span className="tile-value">{formatDate(project.dueDate)}</span>
+              </div>
+            </div>
 
-              {isProjectPM && (
-                <div className="project-management-actions">
-                  <Button type="button" variant="secondary" onClick={() => setIsEditingProject(true)}>Edit Settings</Button>
-                  <Button type="button" variant="danger" onClick={handleDeleteProject}>Delete Project</Button>
+            {isProjectPM && (
+              <div className="project-management-actions">
+                <Button type="button" variant="secondary" onClick={() => setIsEditingProject(true)}>Edit Settings</Button>
+                <Button type="button" variant="danger" onClick={() => setConfirmAction({ type: "delete-project" })}>Delete Project</Button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="card edit-project-card overview-card">
+            <h2>Edit Project Settings</h2>
+            <p className="card-desc">Modify settings for {project.name}.</p>
+
+            <form onSubmit={handleUpdateProject} className="project-form">
+              {projectUpdateError && (
+                <div className="alert alert-danger">
+                  <span className="alert-icon">!</span>
+                  <span className="alert-message">{projectUpdateError}</span>
                 </div>
               )}
-            </div>
-          ) : (
-            <div className="card edit-project-card">
-              <h2>Edit Project Settings</h2>
-              <p className="card-desc">Modify settings for {project.name}.</p>
 
-              <form onSubmit={handleUpdateProject} className="project-form">
-                {projectUpdateError && (
-                  <div className="alert alert-danger">
-                    <span className="alert-icon">!</span>
-                    <span className="alert-message">{projectUpdateError}</span>
-                  </div>
-                )}
+              <div className="form-group">
+                <label htmlFor="edit-proj-name-summary">Project Name <span className="required">*</span></label>
+                <input
+                  id="edit-proj-name-summary"
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  required
+                  disabled={updatingProject}
+                  maxLength={150}
+                />
+              </div>
 
+              <div className="form-group">
+                <label htmlFor="edit-proj-desc-summary">Description</label>
+                <textarea
+                  id="edit-proj-desc-summary"
+                  rows={3}
+                  value={editDesc}
+                  onChange={(e) => setEditDesc(e.target.value)}
+                  disabled={updatingProject}
+                />
+              </div>
+
+              <div className="form-row">
                 <div className="form-group">
-                  <label htmlFor="edit-proj-name">Project Name <span className="required">*</span></label>
-                  <input
-                    id="edit-proj-name"
-                    type="text"
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    required
-                    disabled={updatingProject}
-                    maxLength={150}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="edit-proj-desc">Description</label>
-                  <textarea
-                    id="edit-proj-desc"
-                    rows={4}
-                    value={editDesc}
-                    onChange={(e) => setEditDesc(e.target.value)}
-                    disabled={updatingProject}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="edit-proj-status">Status</label>
+                  <label htmlFor="edit-proj-status-summary">Status</label>
                   <select
-                    id="edit-proj-status"
+                    id="edit-proj-status-summary"
                     value={editStatus}
                     onChange={(e) => setEditStatus(e.target.value as any)}
                     disabled={updatingProject}
@@ -431,270 +417,347 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
                     <option value="archived">Archived</option>
                   </select>
                 </div>
-
-                <div className="form-row">
-                  <div className="form-group">
-                    <label htmlFor="edit-proj-start">Start Date</label>
-                    <input
-                      id="edit-proj-start"
-                      type="date"
-                      value={editStart}
-                      onChange={(e) => setEditStart(e.target.value)}
-                      disabled={updatingProject}
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="edit-proj-due">Due Date</label>
-                    <input
-                      id="edit-proj-due"
-                      type="date"
-                      value={editDue}
-                      onChange={(e) => setEditDue(e.target.value)}
-                      disabled={updatingProject}
-                    />
-                  </div>
-                </div>
-
-                <div className="form-actions">
-                  <button
-                    type="button"
-                    onClick={() => setIsEditingProject(false)}
-                    className="btn btn-secondary"
-                    disabled={updatingProject}
-                  >
-                    Cancel
-                  </button>
-                  <button type="submit" className="btn btn-primary" disabled={updatingProject}>
-                    {updatingProject ? <span className="spinner"></span> : "Save Changes"}
-                  </button>
-                </div>
-              </form>
-            </div>
-          )}
-        </div>
-
-        {/* Right Column: Member Management */}
-        <div className="details-side-col">
-          <div className="card">
-            <h2>Upcoming Deadlines</h2>
-            <div className="dashboard-task-list compact">
-              {upcomingDeadlines.length === 0 ? (
-                <p className="muted-text">No upcoming deadlines.</p>
-              ) : (
-                upcomingDeadlines.map((task) => (
-                  <article key={task.id} className="dashboard-task-item">
-                    <div>
-                      <strong>{task.title}</strong>
-                      <span>Due {formatDate(task.dueDate)}</span>
-                    </div>
-                    <Badge variant={task.priority}>{task.priority}</Badge>
-                  </article>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* Members list */}
-          <div className="card members-card">
-            <h2>Project Members ({members.length})</h2>
-            <p className="card-desc">Users who have access to this project.</p>
-
-            {memberActionError && (
-              <div className="alert alert-danger">
-                <span className="alert-icon">!</span>
-                <span className="alert-message">{memberActionError}</span>
-              </div>
-            )}
-
-            <div className="members-list">
-              {members.map((member) => {
-                const isEditingThis = editingMemberId === member.id;
-                const isPMUser = member.projectRole === "project_manager";
-
-                return (
-                  <div key={member.id} className="member-item">
-                    <UserAvatar name={member.userName} />
-
-                    <div className="member-info">
-                      <div className="member-name-row">
-                        <span className="member-name">{member.userName}</span>
-                        {member.userId === currentUser.id && (
-                          <span className="badge badge-accent member-self-badge">You</span>
-                        )}
-                      </div>
-                      <span className="member-email">{member.userEmail}</span>
-
-                      {/* Display label and role */}
-                      {!isEditingThis ? (
-                        <div className="member-badges-row">
-                          <Badge variant={member.projectRole}>{isPMUser ? "Project Manager" : "Collaborator"}</Badge>
-                          {member.projectLabel && (
-                            <span className="badge badge-label">{member.projectLabel}</span>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="member-inline-edit-form">
-                          <div className="form-group small">
-                            <label>Role</label>
-                            <select
-                              value={editMemberRole}
-                              onChange={(e) => setEditMemberRole(e.target.value as any)}
-                              disabled={savingMember}
-                            >
-                              <option value="project_manager">Project Manager</option>
-                              <option value="collaborator">Collaborator</option>
-                            </select>
-                          </div>
-                          
-                          <div className="form-group small">
-                            <label>Label</label>
-                            <input
-                              type="text"
-                              value={editMemberLabel}
-                              placeholder="E.g., Frontend Lead"
-                              onChange={(e) => setEditMemberLabel(e.target.value)}
-                              disabled={savingMember}
-                              maxLength={100}
-                            />
-                          </div>
-
-                          <div className="inline-edit-actions">
-                            <button
-                              className="btn btn-secondary btn-xs"
-                              onClick={() => setEditingMemberId(null)}
-                              disabled={savingMember}
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              className="btn btn-primary btn-xs"
-                              onClick={() => handleSaveMember(member.id)}
-                              disabled={savingMember}
-                            >
-                              {savingMember ? "..." : "Save"}
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {isProjectPM && !isEditingThis && (
-                      <div className="member-actions">
-                        <button
-                          className="btn-icon"
-                          title="Edit Member"
-                          onClick={() => handleStartEditMember(member)}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          className="btn-icon danger"
-                          title="Remove Member"
-                          onClick={() => handleRemoveMember(member.id, member.userName)}
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Add member form (visible to PM only) */}
-          {isProjectPM && (
-            <div className="card add-member-card">
-              <h2>Add Project Member</h2>
-              <p className="card-desc">Add an eligible registered user to this project.</p>
-
-              <form onSubmit={handleAddMember} className="add-member-form">
                 <div className="form-group">
-                  <label htmlFor="add-user-id">User <span className="required">*</span></label>
-                  <select
-                    id="add-user-id"
-                    value={addUserId}
-                    onChange={(e) => {
-                      const nextUserId = e.target.value;
-                      const nextUser = eligibleUsers.find((user) => user.id === nextUserId);
-
-                      setAddUserId(nextUserId);
-                      if (nextUser?.role === "collaborator") {
-                        setAddRole("collaborator");
-                      }
-                    }}
-                    required
-                    disabled={addingMember || eligibleUsers.length === 0}
-                  >
-                    <option value="">Select a user</option>
-                    {eligibleUsers.map((user) => (
-                      <option key={user.id} value={user.id}>
-                        {user.name} — {user.email} — {user.role}
-                      </option>
-                    ))}
-                  </select>
-                  {eligibleUsers.length === 0 && (
-                    <p className="form-help">No eligible users available to add.</p>
-                  )}
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="add-role">Project Role</label>
-                  <select
-                    id="add-role"
-                    value={addRole}
-                    onChange={(e) => setAddRole(e.target.value as any)}
-                    disabled={addingMember}
-                  >
-                    <option value="collaborator">Collaborator</option>
-                    <option value="project_manager" disabled={selectedUserIsCollaborator}>
-                      Project Manager
-                    </option>
-                  </select>
-                  {selectedUserIsCollaborator && (
-                    <p className="form-help">Global collaborators can only be added as collaborators.</p>
-                  )}
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="add-label">Project Label (Optional)</label>
+                  <label htmlFor="edit-proj-start-summary">Start Date</label>
                   <input
-                    id="add-label"
-                    type="text"
-                    placeholder="e.g., Lead Developer"
-                    value={addLabel}
-                    onChange={(e) => setAddLabel(e.target.value)}
-                    disabled={addingMember}
-                    maxLength={100}
+                    id="edit-proj-start-summary"
+                    type="date"
+                    value={editStart}
+                    onChange={(e) => setEditStart(e.target.value)}
+                    disabled={updatingProject}
                   />
                 </div>
+                <div className="form-group">
+                  <label htmlFor="edit-proj-due-summary">Due Date</label>
+                  <input
+                    id="edit-proj-due-summary"
+                    type="date"
+                    value={editDue}
+                    onChange={(e) => setEditDue(e.target.value)}
+                    disabled={updatingProject}
+                  />
+                </div>
+              </div>
 
-                <button
-                  type="submit"
-                  className="btn btn-primary btn-block"
-                  disabled={addingMember || eligibleUsers.length === 0}
-                >
-                  {addingMember ? <span className="spinner"></span> : "Add Member"}
-                </button>
-              </form>
-            </div>
-          )}
+              <div className="form-actions">
+                <Button type="button" variant="secondary" onClick={() => setIsEditingProject(false)} disabled={updatingProject}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={updatingProject}>
+                  {updatingProject ? <span className="spinner"></span> : "Save Changes"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        <div className="card upcoming-deadlines-card">
+          <h2>Upcoming Deadlines</h2>
+          <div className="dashboard-task-list compact">
+            {upcomingDeadlines.length === 0 ? (
+              <p className="muted-text">No upcoming deadlines.</p>
+            ) : (
+              upcomingDeadlines.map((task) => (
+                <article key={task.id} className="dashboard-task-item">
+                  <div>
+                    <strong>{task.title}</strong>
+                    <span>Due {formatDate(task.dueDate)}</span>
+                  </div>
+                  <Badge variant={task.priority}>{task.priority}</Badge>
+                </article>
+              ))
+            )}
+          </div>
         </div>
       </div>
 
-      {currentUser.role !== "admin" && (
-        <div id="task-management-heading" />
-      )}
+      <div className="project-stats-grid project-overview-grid project-stat-grid">
+        {[ 
+          ["Total Tasks", overviewStats.total, "Project task overview", "total"],
+          ["To Do", overviewStats.todo, "Tasks awaiting start", "todo"],
+          ["In Progress", overviewStats.inProgress, "Currently moving", "progress"],
+          ["Completed", overviewStats.completed, "Finished work", "completed"],
+          ["Overdue", overviewStats.overdue, "Needs attention", "overdue"],
+        ].map(([label, value, helper, icon]) => (
+          <article key={label} className="card modern-metric-card veyra-stat-card stat-card">
+            <div className="stat-card-header">
+              <span className="dashboard-card-label">{label}</span>
+              <StatIcon name={icon as "total" | "todo" | "progress" | "completed" | "overdue"} />
+            </div>
+            <div>
+              <strong className="dashboard-card-value">{value}</strong>
+              <span className="dashboard-card-helper">{helper}</span>
+            </div>
+          </article>
+        ))}
+      </div>
 
-      {currentUser.role !== "admin" && (
-        <TaskManagementSection
-          projectId={projectId}
-          currentUser={currentUser}
-          members={members}
-          isProjectPM={isProjectPM}
-        />
+      <section className="project-workspace-card card">
+        <div className="workspace-header">
+          <div>
+            <h2>Project Workspace</h2>
+            <p>Manage tasks, members, deadlines, and project activity.</p>
+          </div>
+          <div className="workspace-tabbar" role="tablist" aria-label="Project workspace">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={workspaceTab === "tasks"}
+              className={`workspace-tab ${workspaceTab === "tasks" ? "active" : ""}`}
+              onClick={() => setWorkspaceTab("tasks")}
+            >
+              Tasks
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={workspaceTab === "members"}
+              className={`workspace-tab ${workspaceTab === "members" ? "active" : ""}`}
+              onClick={() => setWorkspaceTab("members")}
+            >
+              Members
+            </button>
+          </div>
+        </div>
+
+        <div className="workspace-tab-content">
+          {workspaceTab === "tasks" ? (
+            <div id="task-management-heading" className="workspace-tab-panel" key="tasks">
+              {currentUser.role !== "admin" && (
+                <TaskManagementSection
+                  projectId={projectId}
+                  projectName={project.name}
+                  currentUser={currentUser}
+                  members={members}
+                  isProjectPM={isProjectPM}
+                />
+              )}
+            </div>
+          ) : (
+            <div className="workspace-tab-panel project-members-panel" key="members">
+              <div className="members-card-header">
+                <div>
+                  <h2>Project Members</h2>
+                  <p className="card-desc">{members.length} users have access to this project.</p>
+                </div>
+                {isProjectPM && (
+                  <Button type="button" variant="secondary" onClick={() => setShowAddMemberModal(true)}>
+                    Add Member
+                  </Button>
+                )}
+              </div>
+
+              {memberActionError && (
+                <div className="alert alert-danger">
+                  <span className="alert-icon">!</span>
+                  <span className="alert-message">{memberActionError}</span>
+                </div>
+              )}
+
+              <div className="members-list">
+                {members.map((member) => {
+                  const isEditingThis = editingMemberId === member.id;
+                  const isPMUser = member.projectRole === "project_manager";
+
+                  return (
+                    <div key={member.id} className="member-item">
+                      <UserAvatar name={member.userName} />
+
+                      <div className="member-info">
+                        <div className="member-name-row">
+                          <span className="member-name">{member.userName}</span>
+                          {member.userId === currentUser.id && (
+                            <span className="badge badge-accent member-self-badge">You</span>
+                          )}
+                        </div>
+                        <span className="member-email">{member.userEmail}</span>
+
+                        {!isEditingThis ? (
+                          <div className="member-badges-row">
+                            <Badge variant={member.projectRole}>{isPMUser ? "Project Manager" : "Collaborator"}</Badge>
+                            {member.projectLabel && (
+                              <span className="badge badge-label">{member.projectLabel}</span>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="member-inline-edit-form">
+                            <div className="form-group small">
+                              <label>Role</label>
+                              <select
+                                value={editMemberRole}
+                                onChange={(e) => setEditMemberRole(e.target.value as any)}
+                                disabled={savingMember}
+                              >
+                                <option value="project_manager">Project Manager</option>
+                                <option value="collaborator">Collaborator</option>
+                              </select>
+                            </div>
+
+                            <div className="form-group small">
+                              <label>Label</label>
+                              <input
+                                type="text"
+                                value={editMemberLabel}
+                                placeholder="E.g., Frontend Lead"
+                                onChange={(e) => setEditMemberLabel(e.target.value)}
+                                disabled={savingMember}
+                                maxLength={100}
+                              />
+                            </div>
+
+                            <div className="inline-edit-actions">
+                              <button
+                                className="btn btn-secondary btn-xs"
+                                onClick={() => setEditingMemberId(null)}
+                                disabled={savingMember}
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                className="btn btn-primary btn-xs"
+                                onClick={() => handleSaveMember(member.id)}
+                                disabled={savingMember}
+                              >
+                                {savingMember ? "..." : "Save"}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {isProjectPM && !isEditingThis && (
+                        <div className="member-actions">
+                          <button
+                            className="btn-icon"
+                            title="Edit Member"
+                            onClick={() => handleStartEditMember(member)}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            className="btn-icon danger"
+                            title="Remove Member"
+                            onClick={() => setConfirmAction({ type: "remove-member", memberId: member.id, name: member.userName })}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {isProjectPM && showAddMemberModal && (
+        <Modal
+          title="Add Project Member"
+          description="Add an eligible registered user to this project."
+          onClose={() => setShowAddMemberModal(false)}
+        >
+          <form onSubmit={handleAddMember} className="add-member-form modal-member-form">
+            <div className="form-group">
+              <label htmlFor="add-user-id">User <span className="required">*</span></label>
+              <select
+                id="add-user-id"
+                value={addUserId}
+                onChange={(e) => {
+                  const nextUserId = e.target.value;
+                  const nextUser = eligibleUsers.find((user) => user.id === nextUserId);
+
+                  setAddUserId(nextUserId);
+                  if (nextUser?.role === "collaborator") {
+                    setAddRole("collaborator");
+                  }
+                }}
+                required
+                disabled={addingMember || eligibleUsers.length === 0}
+              >
+                <option value="">Select a user</option>
+                {eligibleUsers.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.name} - {user.email} - {user.role}
+                  </option>
+                ))}
+              </select>
+              {eligibleUsers.length === 0 && (
+                <p className="form-help">No eligible users available to add.</p>
+              )}
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="add-role">Project Role</label>
+              <select
+                id="add-role"
+                value={addRole}
+                onChange={(e) => setAddRole(e.target.value as any)}
+                disabled={addingMember}
+              >
+                <option value="collaborator">Collaborator</option>
+                <option value="project_manager" disabled={selectedUserIsCollaborator}>
+                  Project Manager
+                </option>
+              </select>
+              {selectedUserIsCollaborator && (
+                <p className="form-help">Global collaborators can only be added as collaborators.</p>
+              )}
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="add-label">Project Label</label>
+              <input
+                id="add-label"
+                type="text"
+                placeholder="e.g., Lead Developer"
+                value={addLabel}
+                onChange={(e) => setAddLabel(e.target.value)}
+                disabled={addingMember}
+                maxLength={100}
+              />
+            </div>
+
+            <div className="form-actions">
+              <Button type="button" variant="secondary" onClick={() => setShowAddMemberModal(false)} disabled={addingMember}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={addingMember || eligibleUsers.length === 0}>
+                {addingMember ? <span className="spinner"></span> : "Add Member"}
+              </Button>
+            </div>
+          </form>
+        </Modal>
       )}
+      <ConfirmDialog
+        open={confirmAction?.type === "delete-project"}
+        title="Delete project?"
+        description="This will archive the project and restrict its usage. This action cannot be undone from this screen."
+        confirmLabel="Delete"
+        variant="danger"
+        isLoading={confirmingAction}
+        onCancel={() => setConfirmAction(null)}
+        onConfirm={handleDeleteProject}
+      />
+      <ConfirmDialog
+        open={confirmAction?.type === "remove-member"}
+        title="Remove member?"
+        description={
+          confirmAction?.type === "remove-member"
+            ? `${confirmAction.name} will lose access to this project.`
+            : ""
+        }
+        confirmLabel="Remove"
+        variant="danger"
+        isLoading={confirmingAction}
+        onCancel={() => setConfirmAction(null)}
+        onConfirm={() => {
+          if (confirmAction?.type === "remove-member") {
+            return handleRemoveMember(confirmAction.memberId);
+          }
+        }}
+      />
     </div>
   );
 }

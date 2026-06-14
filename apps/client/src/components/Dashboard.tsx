@@ -45,6 +45,42 @@ function formatAction(action: string): string {
     .join(" ");
 }
 
+function getMetricIcon(label: string) {
+  const common = {
+    viewBox: "0 0 24 24",
+    "aria-hidden": true,
+    focusable: false,
+  };
+
+  switch (label) {
+    case "Active Projects":
+      return <svg {...common}><path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" /><path d="M8 13h8" /></svg>;
+    case "Open Tasks":
+      return <svg {...common}><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>;
+    case "Due Soon":
+      return <svg {...common}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>;
+    case "Completed This Week":
+      return <svg {...common}><path d="M20 6 9 17l-5-5" /><path d="M20 12a8 8 0 1 1-2.35-5.65" /></svg>;
+    default:
+      return <svg {...common}><path d="M4 19V5" /><path d="M4 19h16" /><path d="M8 16v-5" /><path d="M12 16V8" /><path d="M16 16v-3" /></svg>;
+  }
+}
+
+function getMetricVariant(label: string): string {
+  switch (label) {
+    case "Active Projects":
+      return "metric-card--blue";
+    case "Open Tasks":
+      return "metric-card--green";
+    case "Due Soon":
+      return "metric-card--amber";
+    case "Completed This Week":
+      return "metric-card--teal";
+    default:
+      return "";
+  }
+}
+
 export default function Dashboard({ currentUser }: DashboardProps) {
   const { navigate } = useRouter();
   const { socket } = useSocket();
@@ -185,8 +221,9 @@ export default function Dashboard({ currentUser }: DashboardProps) {
 
       <div className="dashboard-grid modern-metrics-grid">
         {metricCards.map((card) => (
-          <article key={card.label} className="dashboard-card card modern-metric-card">
+          <article key={card.label} className={`dashboard-card card modern-metric-card ${getMetricVariant(card.label)}`}>
             <span className="dashboard-card-label">{card.label}</span>
+            <span className="dashboard-metric-icon" aria-hidden="true">{getMetricIcon(card.label)}</span>
             <strong className="dashboard-card-value">{card.value}</strong>
             <span className="dashboard-card-helper">Live from your Veyra workspace</span>
           </article>

@@ -1,11 +1,45 @@
 import React, { useState } from "react";
 import { api, APIError } from "../services/api";
 import type { User } from "../services/api";
+import { Button, Input } from "./ui";
 
 interface ChangePasswordFormProps {
   submitLabel?: string;
   successMessage?: string;
   onPasswordChanged: (user: User) => void;
+}
+
+type PasswordFieldName = "current" | "new" | "confirm";
+
+function PasswordVisibilityButton({
+  visible,
+  onClick,
+}: {
+  visible: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="password-visibility-toggle"
+      onClick={onClick}
+      aria-label={visible ? "Hide password" : "Show password"}
+    >
+      {visible ? (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M3 3l18 18" />
+          <path d="M10.6 10.6a2 2 0 0 0 2.8 2.8" />
+          <path d="M9.9 5.1A9.7 9.7 0 0 1 12 5c5 0 8.5 4.2 9.5 6.7a1 1 0 0 1 0 .6 12.4 12.4 0 0 1-3 4.1" />
+          <path d="M6.1 6.4a12.3 12.3 0 0 0-3.6 5.3 1 1 0 0 0 0 .6C3.5 14.8 7 19 12 19a9.7 9.7 0 0 0 3.4-.6" />
+        </svg>
+      ) : (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M2.5 11.7a1 1 0 0 0 0 .6C3.5 14.8 7 19 12 19s8.5-4.2 9.5-6.7a1 1 0 0 0 0-.6C20.5 9.2 17 5 12 5s-8.5 4.2-9.5 6.7Z" />
+          <circle cx="12" cy="12" r="3" />
+        </svg>
+      )}
+    </button>
+  );
 }
 
 function getPasswordPolicyError(password: string): string | null {
@@ -28,6 +62,18 @@ export default function ChangePasswordForm({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [visibleFields, setVisibleFields] = useState<Record<PasswordFieldName, boolean>>({
+    current: false,
+    new: false,
+    confirm: false,
+  });
+
+  const togglePasswordVisibility = (field: PasswordFieldName) => {
+    setVisibleFields((current) => ({
+      ...current,
+      [field]: !current[field],
+    }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,49 +125,47 @@ export default function ChangePasswordForm({
         </div>
       )}
 
-      <div className="form-group">
-        <label htmlFor="current-password">Current Password</label>
-        <input
-          id="current-password"
-          type="password"
-          value={currentPassword}
-          onChange={(e) => setCurrentPassword(e.target.value)}
+      <Input
+        id="current-password"
+        type={visibleFields.current ? "text" : "password"}
+        label="Current Password"
+        value={currentPassword}
+        onChange={(e) => setCurrentPassword(e.target.value)}
+        required
+        disabled={submitting}
+        autoComplete="current-password"
+        rightIcon={<PasswordVisibilityButton visible={visibleFields.current} onClick={() => togglePasswordVisibility("current")} />}
+      />
+
+      <div className="form-row">
+        <Input
+          id="new-password"
+          type={visibleFields.new ? "text" : "password"}
+          label="New Password"
+          helperText="Use at least 8 characters, mixed case, a number, and a special character."
+          value={newPassword}
+          onChange={(e) => setNewPassword(e.target.value)}
           required
           disabled={submitting}
-          autoComplete="current-password"
+          autoComplete="new-password"
+          rightIcon={<PasswordVisibilityButton visible={visibleFields.new} onClick={() => togglePasswordVisibility("new")} />}
+        />
+        <Input
+          id="confirm-password"
+          type={visibleFields.confirm ? "text" : "password"}
+          label="Confirm New Password"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          required
+          disabled={submitting}
+          autoComplete="new-password"
+          rightIcon={<PasswordVisibilityButton visible={visibleFields.confirm} onClick={() => togglePasswordVisibility("confirm")} />}
         />
       </div>
 
-      <div className="form-row">
-        <div className="form-group">
-          <label htmlFor="new-password">New Password</label>
-          <input
-            id="new-password"
-            type="password"
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            required
-            disabled={submitting}
-            autoComplete="new-password"
-          />
-        </div>
-        <div className="form-group">
-          <label htmlFor="confirm-password">Confirm New Password</label>
-          <input
-            id="confirm-password"
-            type="password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            required
-            disabled={submitting}
-            autoComplete="new-password"
-          />
-        </div>
-      </div>
-
-      <button type="submit" className="btn btn-primary" disabled={submitting}>
+      <Button type="submit" disabled={submitting}>
         {submitting ? "Updating..." : submitLabel}
-      </button>
+      </Button>
     </form>
   );
 }

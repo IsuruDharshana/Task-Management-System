@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api, APIError } from "../services/api";
 import type { AdminUser } from "../services/api";
-import { Badge, Button, EmptyState, Input, LoadingState, Select, UserAvatar } from "./ui";
+import { Badge, Button, ConfirmDialog, EmptyState, Input, LoadingState, Select, UserAvatar } from "./ui";
 
 type EditableRole = "project_manager" | "collaborator";
 type RoleFilter = "all" | "admin" | "project_manager" | "collaborator";
@@ -468,20 +468,22 @@ export default function AdminPanel() {
         </div>
       )}
 
-      {confirmAction && (
-        <div className="modal-backdrop" role="presentation">
-          <div className="modal-card modal-card-sm" role="dialog" aria-modal="true" aria-labelledby="confirm-action-title">
-            <h2 id="confirm-action-title">{getConfirmTitle()}</h2>
-            <p className="card-desc">{getConfirmMessage()}</p>
-            <div className="form-actions">
-              <Button type="button" variant="secondary" onClick={() => setConfirmAction(null)} disabled={confirmingAction}>Cancel</Button>
-              <Button type="button" variant={confirmAction.type === "deactivate" ? "danger" : "primary"} onClick={handleConfirmAction} disabled={confirmingAction}>
-                {confirmingAction ? "Working..." : "Confirm"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={Boolean(confirmAction)}
+        title={getConfirmTitle()}
+        description={getConfirmMessage()}
+        confirmLabel={
+          confirmAction?.type === "deactivate"
+            ? "Deactivate"
+            : confirmAction?.type === "reactivate"
+              ? "Reactivate"
+              : "Reset Password"
+        }
+        variant={confirmAction?.type === "deactivate" ? "danger" : "default"}
+        isLoading={confirmingAction}
+        onCancel={() => setConfirmAction(null)}
+        onConfirm={handleConfirmAction}
+      />
     </div>
   );
 }

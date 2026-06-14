@@ -8,9 +8,41 @@ interface LoginProps {
   onLoginSuccess: (user: User) => void;
 }
 
+function PasswordVisibilityButton({
+  visible,
+  onClick,
+}: {
+  visible: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="password-visibility-toggle"
+      onClick={onClick}
+      aria-label={visible ? "Hide password" : "Show password"}
+    >
+      {visible ? (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M3 3l18 18" />
+          <path d="M10.6 10.6a2 2 0 0 0 2.8 2.8" />
+          <path d="M9.9 5.1A9.7 9.7 0 0 1 12 5c5 0 8.5 4.2 9.5 6.7a1 1 0 0 1 0 .6 12.4 12.4 0 0 1-3 4.1" />
+          <path d="M6.1 6.4a12.3 12.3 0 0 0-3.6 5.3 1 1 0 0 0 0 .6C3.5 14.8 7 19 12 19a9.7 9.7 0 0 0 3.4-.6" />
+        </svg>
+      ) : (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M2.5 11.7a1 1 0 0 0 0 .6C3.5 14.8 7 19 12 19s8.5-4.2 9.5-6.7a1 1 0 0 0 0-.6C20.5 9.2 17 5 12 5s-8.5 4.2-9.5 6.7Z" />
+          <circle cx="12" cy="12" r="3" />
+        </svg>
+      )}
+    </button>
+  );
+}
+
 export default function Login({ onLoginSuccess }: LoginProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -113,7 +145,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
 
             <Input
               id="password"
-              type="password"
+              type={showPassword ? "text" : "password"}
               label="Password"
               placeholder="••••••••"
               value={password}
@@ -121,6 +153,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
               required
               disabled={loading}
               autoComplete="current-password"
+              rightIcon={<PasswordVisibilityButton visible={showPassword} onClick={() => setShowPassword((current) => !current)} />}
               leftIcon={<span aria-hidden="true">●</span>}
             />
 

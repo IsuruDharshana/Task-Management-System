@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { api, APIError } from "../services/api";
 import type { TaskAttachment, User } from "../services/api";
+import { Button, ConfirmDialog, EmptyState, LoadingState, UserAvatar } from "./ui";
 
 interface TaskAttachmentsSectionProps {
   taskId: string;
@@ -66,6 +67,7 @@ export default function TaskAttachmentsSection({
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [attachmentPendingDelete, setAttachmentPendingDelete] = useState<TaskAttachment | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const loadAttachments = async () => {
@@ -156,16 +158,14 @@ export default function TaskAttachmentsSection({
   };
 
   const handleDelete = async (attachment: TaskAttachment) => {
-    if (!window.confirm(`Delete attachment "${attachment.fileName}"?`)) return;
-
-    const reason = window.prompt("Reason for deletion (optional):") || undefined;
     setError(null);
     setSuccess(null);
     setSaving(true);
 
     try {
-      await api.tasks.deleteTaskAttachment(attachment.id, reason);
+      await api.tasks.deleteTaskAttachment(attachment.id);
       setAttachments((current) => current.filter((item) => item.id !== attachment.id));
+      setAttachmentPendingDelete(null);
       setSuccess("Attachment deleted.");
     } catch (err) {
       setError(getErrorMessage(err, "Failed to delete attachment."));
@@ -228,19 +228,16 @@ export default function TaskAttachmentsSection({
           <span className="muted-text">
             {selectedFile ? `${selectedFile.name} - ${formatFileSize(selectedFile.size)}` : "Max 10 MB"}
           </span>
-          <button className="btn btn-primary btn-sm" type="submit" disabled={saving}>
+          <Button type="submit" disabled={saving}>
             {saving ? <span className="spinner"></span> : "Upload"}
-          </button>
+          </Button>
         </div>
       </form>
 
       {loading ? (
-        <div className="task-comments-loading">
-          <span className="spinner"></span>
-          <span>Loading attachments...</span>
-        </div>
+        <LoadingState label="Loading attachments..." />
       ) : attachments.length === 0 ? (
-        <div className="task-comments-empty">No attachments yet.</div>
+        <EmptyState title="No attachments yet" description="Upload files, images, or supporting documents for this task." />
       ) : (
         <div className="task-attachments-list">
           {attachments.map((attachment) => {
@@ -249,6 +246,7 @@ export default function TaskAttachmentsSection({
             return (
               <div key={attachment.id} className="task-attachment-item">
                 <div className="task-attachment-main">
+                  <UserAvatar name={attachment.uploadedByName || "Unknown user"} size="sm" />
                   <strong>{attachment.fileName}</strong>
                   <div className="task-comment-meta">
                     <span>{formatFileSize(attachment.fileSize)}</span>
@@ -269,7 +267,7 @@ export default function TaskAttachmentsSection({
                     <button
                       className="btn btn-danger btn-xs"
                       type="button"
-                      onClick={() => handleDelete(attachment)}
+                      onClick={() => setAttachmentPendingDelete(attachment)}
                       disabled={saving}
                     >
                       Delete
@@ -281,6 +279,24 @@ export default function TaskAttachmentsSection({
           })}
         </div>
       )}
+      <ConfirmDialog
+        open={Boolean(attachmentPendingDelete)}
+        title="Delete attachment?"
+        description={
+          attachmentPendingDelete
+            ? `The attachment "${attachmentPendingDelete.fileName}" will be removed from this task.`
+            : ""
+        }
+        confirmLabel="Delete"
+        variant="danger"
+        isLoading={saving}
+        onCancel={() => setAttachmentPendingDelete(null)}
+        onConfirm={() => {
+          if (attachmentPendingDelete) {
+            return handleDelete(attachmentPendingDelete);
+          }
+        }}
+      />
     </div>
   );
 }
