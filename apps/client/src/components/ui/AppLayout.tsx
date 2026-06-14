@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { User } from "../../services/api";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
@@ -18,6 +18,7 @@ export default function AppLayout({
   onLogout,
   children,
 }: AppLayoutProps) {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const isAdmin = currentUser.role === "admin";
   const isProjectManager = currentUser.role === "project_manager";
   const navItems = isAdmin
@@ -43,11 +44,37 @@ export default function AppLayout({
         { label: "Settings", path: "/settings", active: path === "/settings", icon: "settings" },
       ];
 
+  useEffect(() => {
+    if (!sidebarOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setSidebarOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [sidebarOpen]);
+
+  const handleNavigate = (nextPath: string) => {
+    onNavigate(nextPath);
+    setSidebarOpen(false);
+  };
+
   return (
     <div className="app-shell veyra-app-layout">
-      <Sidebar currentUser={currentUser} navItems={navItems} onNavigate={onNavigate} />
+      <Sidebar
+        currentUser={currentUser}
+        navItems={navItems}
+        onNavigate={handleNavigate}
+        onLogout={onLogout}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      />
+      {sidebarOpen && <button type="button" className="mobile-sidebar-backdrop" aria-label="Close navigation menu" onClick={() => setSidebarOpen(false)} />}
       <div className="app-main veyra-content-shell">
-        <Topbar currentUser={currentUser} onLogout={onLogout} />
+        <Topbar currentUser={currentUser} onLogout={onLogout} onMenuClick={() => setSidebarOpen(true)} />
         <main className="app-content page-content app-main-content">{children}</main>
       </div>
     </div>

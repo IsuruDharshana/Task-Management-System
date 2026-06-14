@@ -7,14 +7,24 @@ import UserAvatar from "./UserAvatar";
 interface TopbarProps {
   currentUser: User;
   onLogout: () => void;
+  onMenuClick?: () => void;
 }
 
-export default function Topbar({ currentUser, onLogout }: TopbarProps) {
+export default function Topbar({ currentUser, onLogout, onMenuClick }: TopbarProps) {
   return (
     <header className="veyra-topbar">
-      <div>
+      <div className="veyra-topbar-title">
+        <button type="button" className="mobile-menu-button" onClick={onMenuClick} aria-label="Open navigation menu">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 6h16" />
+            <path d="M4 12h16" />
+            <path d="M4 18h16" />
+          </svg>
+        </button>
+        <div>
         <p className="veyra-topbar-kicker">Veyra Task Management System</p>
         <h1>Welcome, {currentUser.name}</h1>
+        </div>
       </div>
       <div className="veyra-topbar-actions">
         <NotificationBell />

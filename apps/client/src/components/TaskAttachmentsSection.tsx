@@ -219,6 +219,7 @@ export default function TaskAttachmentsSection({
           <input
             id={`task-attachment-${taskId}`}
             ref={fileInputRef}
+            className="attachment-file-input"
             type="file"
             onChange={handleFileChange}
             disabled={saving}

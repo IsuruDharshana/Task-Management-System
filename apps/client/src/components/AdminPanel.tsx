@@ -224,6 +224,25 @@ export default function AdminPanel() {
     return `This will generate a new temporary password for ${confirmAction.user.name}. They must change it on next login.`;
   };
 
+  const renderUserActions = (user: AdminUser) => (
+    <div className="admin-row-actions">
+      <Button type="button" variant="secondary" className="btn-xs" onClick={() => handleStartEdit(user)} disabled={user.role === "admin"}>
+        Edit
+      </Button>
+      <Button type="button" variant="secondary" className="btn-xs" onClick={() => setConfirmAction({ type: "reset-password", user })}>
+        Reset
+      </Button>
+      <Button
+        type="button"
+        variant={user.isActive ? "danger" : "secondary"}
+        className="btn-xs"
+        onClick={() => setConfirmAction({ type: user.isActive ? "deactivate" : "reactivate", user })}
+      >
+        {user.isActive ? "Deactivate" : "Reactivate"}
+      </Button>
+    </div>
+  );
+
   return (
     <div className="admin-panel veyra-page">
       <div className="modern-page-header">
@@ -387,6 +406,7 @@ export default function AdminPanel() {
         ) : filteredUsers.length === 0 ? (
           <EmptyState title="No users found" description="Adjust filters or create a new user." />
         ) : (
+          <>
           <div className="table-responsive">
             <table className="users-table modern-users-table">
               <thead>
@@ -420,28 +440,38 @@ export default function AdminPanel() {
                     <td>{formatDateTime(user.lastLoginAt)}</td>
                     <td>{formatDate(user.createdAt)}</td>
                     <td>
-                      <div className="admin-row-actions">
-                        <Button type="button" variant="secondary" className="btn-xs" onClick={() => handleStartEdit(user)} disabled={user.role === "admin"}>
-                          Edit
-                        </Button>
-                        <Button type="button" variant="secondary" className="btn-xs" onClick={() => setConfirmAction({ type: "reset-password", user })}>
-                          Reset
-                        </Button>
-                        <Button
-                          type="button"
-                          variant={user.isActive ? "danger" : "secondary"}
-                          className="btn-xs"
-                          onClick={() => setConfirmAction({ type: user.isActive ? "deactivate" : "reactivate", user })}
-                        >
-                          {user.isActive ? "Deactivate" : "Reactivate"}
-                        </Button>
-                      </div>
+                      {renderUserActions(user)}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+          <div className="mobile-user-card-list">
+            {filteredUsers.map((user) => (
+              <article key={user.id} className="mobile-user-card">
+                <div className="mobile-user-card-header">
+                  <UserAvatar name={user.name} />
+                  <div>
+                    <strong>{user.name}</strong>
+                    <span>{user.email}</span>
+                  </div>
+                </div>
+                <div className="mobile-user-badges">
+                  <Badge variant={user.role}>{user.role.replace("_", " ")}</Badge>
+                  <Badge variant={user.isActive ? "active" : "inactive"}>{user.isActive ? "Active" : "Inactive"}</Badge>
+                  <Badge variant={user.mustResetPassword ? "overdue" : "completed"}>{user.mustResetPassword ? "Reset required" : "Current"}</Badge>
+                </div>
+                <dl className="mobile-user-meta">
+                  <div><dt>Last login</dt><dd>{formatDateTime(user.lastLoginAt)}</dd></div>
+                  <div><dt>Created</dt><dd>{formatDate(user.createdAt)}</dd></div>
+                  <div><dt>User ID</dt><dd>{user.id.slice(0, 8)}</dd></div>
+                </dl>
+                {renderUserActions(user)}
+              </article>
+            ))}
+          </div>
+          </>
         )}
       </section>
 
