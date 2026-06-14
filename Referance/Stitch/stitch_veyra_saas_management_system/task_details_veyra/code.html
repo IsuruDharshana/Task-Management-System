@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Veyra | Task Details</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        @import url('https://fonts.googleapis.com/css2?family=Geist:wght@100..900&display=swap');
+        
+        body {
+            font-family: 'Geist', sans-serif;
+            background-color: #f7f9fe;
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #d8e2f0;
+            border-radius: 10px;
+        }
+
+        .priority-accent {
+            position: relative;
+        }
+        .priority-accent::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background-color: #296EF9;
+            border-top-left-radius: 24px;
+            border-bottom-left-radius: 24px;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-container": "#637992",
+                        "secondary": "#0e3191",
+                        "primary": "#296ef9",
+                        "inverse-on-surface": "#eff1f6",
+                        "surface-bright": "#f7f9fe",
+                        "surface-container-low": "#f1f4f9",
+                        "secondary-fixed": "#dce1ff",
+                        "on-tertiary-container": "#00060f",
+                        "secondary-fixed-dim": "#b7c4ff",
+                        "outline-variant": "#c2c6d7",
+                        "on-tertiary-fixed-variant": "#33495f",
+                        "surface-tint": "#0055d5",
+                        "surface-container-high": "#e6e8ed",
+                        "on-error": "#ffffff",
+                        "on-surface-variant": "#424655",
+                        "surface-dim": "#d8dadf",
+                        "on-background": "#181c20",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "surface-variant": "#e0e2e7",
+                        "tertiary-fixed-dim": "#b2c9e4",
+                        "on-surface": "#181c20",
+                        "primary-fixed": "#dae1ff",
+                        "secondary-container": "#819bff",
+                        "background": "#f7f9fe",
+                        "on-secondary-container": "#062d8d",
+                        "primary-fixed-dim": "#b3c5ff",
+                        "on-primary-fixed": "#001849",
+                        "error-container": "#ffdad6",
+                        "surface-container-highest": "#e0e2e7",
+                        "error": "#ba1a1a",
+                        "tertiary-fixed": "#cfe5ff",
+                        "on-primary-container": "#fefcff",
+                        "primary-container": "#246bf6",
+                        "on-error-container": "#93000a",
+                        "inverse-primary": "#b3c5ff",
+                        "on-tertiary-fixed": "#031d32",
+                        "outline": "#737686",
+                        "surface-container": "#eceef3",
+                        "inverse-surface": "#2d3135",
+                        "on-secondary-fixed": "#001551",
+                        "on-secondary-fixed-variant": "#213e9d",
+                        "surface": "#f7f9fe",
+                        "on-primary": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary-fixed-variant": "#003fa3",
+                        "tertiary": "#4a6078"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px",
+                        "card": "24px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Geist"],
+                        "headline-lg": ["Geist"],
+                        "title-lg": ["Geist"],
+                        "body-md": ["Geist"],
+                        "label-md": ["Geist"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "title-lg": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-surface">
+<!-- Sidebar Navigation -->
+<aside class="h-full w-64 fixed left-0 top-0 bg-secondary dark:bg-inverse-surface flex flex-col py-8 px-4 shadow-md z-50">
+<div class="mb-10 px-2 flex items-center gap-3">
+<div class="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
+<span class="material-symbols-outlined text-white" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<h1 class="font-display-lg text-headline-md font-bold text-white tracking-tight">Veyra</h1>
+</div>
+<nav class="flex-1 space-y-2">
+<a class="flex items-center gap-3 px-4 py-3 text-secondary-fixed-dim hover:text-on-primary hover:bg-primary-container/20 transition-colors duration-200 rounded-full group" href="#">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">dashboard</span>
+<span class="font-body-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 bg-primary text-on-primary rounded-full shadow-lg shadow-primary/20" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">assignment_turned_in</span>
+<span class="font-body-md font-semibold">Tasks</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-secondary-fixed-dim hover:text-on-primary hover:bg-primary-container/20 transition-colors duration-200 rounded-full group" href="#">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">folder_open</span>
+<span class="font-body-md">Projects</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-secondary-fixed-dim hover:text-on-primary hover:bg-primary-container/20 transition-colors duration-200 rounded-full group" href="#">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">notifications</span>
+<span class="font-body-md">Notifications</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-secondary-fixed-dim hover:text-on-primary hover:bg-primary-container/20 transition-colors duration-200 rounded-full group" href="#">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">settings</span>
+<span class="font-body-md">Settings</span>
+</a>
+</nav>
+<div class="mt-auto space-y-2 pt-6 border-t border-white/10">
+<a class="flex items-center gap-3 px-4 py-3 text-secondary-fixed-dim hover:text-on-primary transition-colors" href="#">
+<span class="material-symbols-outlined">help_outline</span>
+<span class="font-body-md">Support</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-secondary-fixed-dim hover:text-on-primary transition-colors" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span class="font-body-md">Sign Out</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Shell -->
+<main class="ml-64 min-h-screen flex flex-col">
+<!-- Top Navigation Bar -->
+<header class="flex justify-between items-center w-full px-8 h-16 sticky top-0 bg-surface-lowest dark:bg-surface-container-low border-b border-outline-variant z-40">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-outline">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-body-md w-64 placeholder:text-outline/60" placeholder="Search tasks, files, or comments..." type="text"/>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex gap-4">
+<button class="text-on-surface-variant hover:text-primary transition-colors p-2 rounded-full hover:bg-surface-container">
+<span class="material-symbols-outlined">sensors</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors p-2 rounded-full hover:bg-surface-container relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full border-2 border-surface-lowest"></span>
+</button>
+</div>
+<div class="h-8 w-[1px] bg-outline-variant"></div>
+<div class="flex items-center gap-3 cursor-pointer group">
+<img alt="User Avatar" class="w-8 h-8 rounded-full ring-2 ring-transparent group-hover:ring-primary transition-all" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC4StgxcQN8mzpJe4OHOcBFwgZ2gTyC65XOP2UJqHls7EPYZ8RBp97yd-aNw1t0Ex1O6xEyeg9WY3d9Olsj5KyaUTNsEOzQLJIu-w562Aq7h07iiwaFa9Tlr40Q-BKrbLOd1KrsRPJ9SCYnJusAyy1Ra1d0_RyjvCWKLyoX0JZxG08X_ypPDigp8C1rqJFjzRUFgRGfRtdFw1je1LtZKJQJ1HvCWI0gGwphCnFnisCgQb3ge0vEbrYZDAzd-EvAYWNa0A5pULN_H0Y"/>
+<span class="font-body-md font-semibold text-on-surface">Alex Thompson</span>
+</div>
+</div>
+</header>
+<!-- Screen Content Container -->
+<div class="flex-1 flex overflow-hidden">
+<!-- Main Details Content (Scrollable) -->
+<div class="flex-1 p-8 overflow-y-auto custom-scrollbar">
+<!-- Task Header Section -->
+<div class="mb-10">
+<div class="flex justify-between items-start mb-6">
+<div class="space-y-1">
+<div class="flex items-center gap-2 text-primary font-body-md font-semibold mb-1">
+<span class="material-symbols-outlined text-[18px]">folder_open</span>
+                                Cloud Infrastructure Revamp
+                            </div>
+<h2 class="font-headline-md text-on-surface tracking-tight">Finalize API Documentation for Enterprise Partners</h2>
+<div class="flex flex-wrap items-center gap-3 mt-4">
+<span class="px-3 py-1 bg-primary/10 text-primary rounded-full text-label-md font-bold uppercase tracking-wider">In Progress</span>
+<span class="px-3 py-1 bg-error/10 text-error rounded-full text-label-md font-bold uppercase tracking-wider flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">flag</span> High Priority
+                                </span>
+<span class="text-on-surface-variant text-body-md flex items-center gap-1.5 ml-2">
+<span class="material-symbols-outlined text-[18px]">calendar_today</span>
+                                    Due Oct 24, 2023
+                                </span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<button class="flex items-center gap-2 px-4 py-2 border border-outline-variant bg-white text-secondary font-semibold rounded-lg hover:bg-surface-container-low transition-colors shadow-sm active:scale-95">
+<span class="material-symbols-outlined">edit</span> Edit
+                            </button>
+<button class="flex items-center gap-2 px-5 py-2 bg-primary text-white font-semibold rounded-lg hover:brightness-110 shadow-lg shadow-primary/20 transition-all active:scale-95">
+<span class="material-symbols-outlined">sync</span> Update Status
+                            </button>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<span class="text-label-md text-on-surface-variant font-bold uppercase">Assignees:</span>
+<div class="flex -space-x-2">
+<img alt="Sarah" class="w-8 h-8 rounded-full ring-2 ring-white" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB_Asged5CoXjLiL9YsglBlwmdaRQ9wJvm3xs-tmksJIYlaYaa1lqlzJ5AWhEwkkTE5Lz0vY8UBzIah6Gt2o88k5nLFtr_8iclfOajp4vP1FZuOkrFUIoY4oRL5eteMg-GelX9gEWESQ4Z143JwqYop3imHyrHHJTLl-9ILi8p73jUV1gbTv9V7RhD9_80tUm5BTyKONjrfv_45dnL2zC0YvKjrUeouhlM03laKEvih2sW9B1QaotuJQK0o3W-RJVoV7Cxouumq8OI"/>
+<img alt="James" class="w-8 h-8 rounded-full ring-2 ring-white" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDXrb4D95xkLZE3Erz9ZrUcKbAP-gEeMWnfBaiSNlauoFMN6N7DCRz3LJb4qsdIdHFdzIm4oCHCOJYmcLSWFDeoXe3bUK9xA9pVXTX7iZWp3MwcI-o-XnTqUVJIswzW09vRlZoRWJX-LgufwX4sv12yLNTHAYHrL59C7AMBz6Axb9_7caJXaRCKVTiVuUAVGRQXcekp5BjtIl501EJYsRjqwkJbmSugKZuyDdLdfzToenVXWa8q7Cqi8C4NMs4V2AzvMn0TdRzF-bk"/>
+<img alt="Maria" class="w-8 h-8 rounded-full ring-2 ring-white" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCyZZPh9jtZtvhy9Lz0g_crXX_NPaAeDGm5V5RhxbwUa5j2vXGgOZRNmsmjvomAeFbj_Vj1G9AURQNdzYS1I078h26IbwjDwQBuwVcycBiU2Mbef3dYLL2LuPVZI0I63F8Xtgb8LWEje5lQCKpxcVJ47o-FuxCW7AHMxL7xOta8MvKnCkz3omXSP5BGMjuHZojuMm_osmAV2TE5H0jCXWElhp6qxGwukQ3oUhtYyywFWsEUyfdUmpWE16h5bu73ngmCHXZiAP8cJ9I"/>
+<div class="w-8 h-8 rounded-full ring-2 ring-white bg-surface-container-high flex items-center justify-center text-label-md font-bold text-on-surface-variant">+2</div>
+</div>
+</div>
+</div>
+<!-- Grid Layout for Description and Attachments -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
+<!-- Description Card -->
+<div class="lg:col-span-2 bg-white rounded-card p-inset-card border border-outline-variant shadow-[0_4px_20px_-2px_rgba(15,23,42,0.08)] priority-accent overflow-hidden">
+<h3 class="font-title-lg text-on-surface mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">description</span> Task Description
+                        </h3>
+<div class="text-body-md text-on-surface-variant space-y-4 leading-relaxed">
+<p>This task involves a comprehensive review and finalization of the technical API documentation intended for our tier-1 enterprise partners. We need to ensure that all endpoints for the v3 engine are accurately described, including edge cases for authentication and rate-limiting.</p>
+<ul class="list-disc pl-5 space-y-2">
+<li>Verify JSON schema examples for all legacy endpoints.</li>
+<li>Update SDK integration guides for Python and Go.</li>
+<li>Add the new "Reliability &amp; Uptime" section as per client request.</li>
+</ul>
+<p class="pt-2 italic text-on-surface-variant/70 border-t border-outline-variant/30">Last updated by Alex Thompson 2 hours ago.</p>
+</div>
+</div>
+<!-- Attachments Card -->
+<div class="bg-white rounded-card p-inset-card border border-outline-variant shadow-[0_4px_20px_-2px_rgba(15,23,42,0.08)]">
+<div class="flex justify-between items-center mb-6">
+<h3 class="font-title-lg text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">attach_file</span> Attachments
+                            </h3>
+<button class="text-primary hover:bg-primary/5 p-1 rounded-full transition-colors">
+<span class="material-symbols-outlined">add_circle</span>
+</button>
+</div>
+<div class="space-y-4">
+<div class="group flex items-center gap-3 p-3 border border-outline-variant/50 rounded-xl hover:border-primary/50 transition-colors cursor-pointer bg-surface-bright">
+<div class="w-10 h-10 bg-error/10 text-error flex items-center justify-center rounded-lg">
+<span class="material-symbols-outlined">picture_as_pdf</span>
+</div>
+<div class="flex-1 min-w-0">
+<p class="font-body-md font-semibold text-on-surface truncate">API_Specs_v3.pdf</p>
+<p class="text-[11px] text-on-surface-variant">2.4 MB • Sarah M.</p>
+</div>
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors">download</span>
+</div>
+<div class="group flex items-center gap-3 p-3 border border-outline-variant/50 rounded-xl hover:border-primary/50 transition-colors cursor-pointer bg-surface-bright">
+<div class="w-10 h-10 bg-primary/10 text-primary flex items-center justify-center rounded-lg">
+<span class="material-symbols-outlined">image</span>
+</div>
+<div class="flex-1 min-w-0">
+<p class="font-body-md font-semibold text-on-surface truncate">Header_Layout.png</p>
+<p class="text-[11px] text-on-surface-variant">4.1 MB • Alex T.</p>
+</div>
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors">download</span>
+</div>
+<div class="group flex items-center gap-3 p-3 border border-outline-variant/50 rounded-xl hover:border-primary/50 transition-colors cursor-pointer bg-surface-bright">
+<div class="w-10 h-10 bg-secondary/10 text-secondary flex items-center justify-center rounded-lg">
+<span class="material-symbols-outlined">article</span>
+</div>
+<div class="flex-1 min-w-0">
+<p class="font-body-md font-semibold text-on-surface truncate">Notes_Internal.txt</p>
+<p class="text-[11px] text-on-surface-variant">42 KB • James L.</p>
+</div>
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors">download</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Comments Section -->
+<div class="bg-white rounded-card p-inset-card border border-outline-variant shadow-[0_4px_20px_-2px_rgba(15,23,42,0.08)] mb-10">
+<h3 class="font-title-lg text-on-surface mb-8 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">chat_bubble</span> Collaboration Thread
+                    </h3>
+<div class="space-y-8 mb-10">
+<!-- Comment 1 -->
+<div class="flex gap-4">
+<img alt="Sarah" class="w-10 h-10 rounded-full" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBUYXl1jNrLW5DDQdf7aQyGC_goXSp6OcSPFC36ashme0RI5Hhy32hiFd3ilD_YcFvCAYhJ7i7lw7WGe0xe6JEIo6yypEgkCVGfP2SvUlhWsyHkBqyQYWXTdruqDVeyruNTaceRO3xTNhTGo4BEE4vt9IRtWLGXUAI78o9I8IStusd5ZBx6VwUy4_t7lR4bjK3WmJeui7SGFQ6z-RttLWuBVTG5mJ6MSgV_1Un1H9IDGZt8NWZFhrhYSZ3X54Q-IxTRGzM8-5d-UdY"/>
+<div class="flex-1">
+<div class="flex items-baseline gap-2 mb-1">
+<span class="font-body-md font-bold text-on-surface">Sarah Miller</span>
+<span class="text-[12px] text-on-surface-variant/60">3 hours ago</span>
+</div>
+<div class="bg-surface-bright p-4 rounded-2xl rounded-tl-none text-body-md text-on-surface-variant">
+                                    Just uploaded the latest API specs. I've highlighted the changes in the authentication flow. Alex, can you take a look?
+                                </div>
+<div class="flex gap-4 mt-2">
+<button class="text-label-md text-primary font-bold uppercase tracking-wider hover:underline">Reply</button>
+<button class="text-label-md text-on-surface-variant font-bold uppercase tracking-wider hover:text-on-surface transition-colors flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">thumb_up</span> 2
+                                    </button>
+</div>
+</div>
+</div>
+<!-- Comment 2 (Reply) -->
+<div class="flex gap-4 ml-14">
+<img alt="Alex" class="w-10 h-10 rounded-full" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCbP5mGZQiPg3XmBPqbQHVenUFAtdHpb7P_Fvr0GVZzsCteOgL6oezbhyM5aoWAj2upUGAQxSODJdqUoQ4IWyvBs8LbmZm66uNb2JAScX6k3NfIivR4dHZPGCEMO7WBh3hImXL2vB7FN0CY-B_pAP3trUvCL40WNNtFm1JQLO-C7liJiQTh0bRXZaG-eZlHdjWAGxdyGtQR1y51smpLQrodxCpW11ZujJBNonuXa9l67zBfpvlNVJaTekytL1rwAoio6ZZyVilrKN8"/>
+<div class="flex-1">
+<div class="flex items-baseline gap-2 mb-1">
+<span class="font-body-md font-bold text-on-surface">Alex Thompson</span>
+<span class="text-[12px] text-on-surface-variant/60">2 hours ago</span>
+</div>
+<div class="bg-primary/5 p-4 rounded-2xl rounded-tl-none border border-primary/10 text-body-md text-on-surface-variant">
+                                    Thanks Sarah. The auth flow looks solid. I'll merge this into the main document by EOD.
+                                </div>
+<div class="flex gap-4 mt-2">
+<button class="text-label-md text-primary font-bold uppercase tracking-wider hover:underline">Reply</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Input Area -->
+<div class="flex gap-4 items-start border-t border-outline-variant pt-8">
+<img alt="Alex" class="w-10 h-10 rounded-full" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBfY79Qf5GtSTTfK4NQtwhTWuABUHjwIsQ7VPh4NVhAg1zhANaILt2iuEsfmT4Lob2o-L0jV0H7jeq4olvXBQUxTQXtJfYsGiZls7jPr8Nqdzr2kon_USOy44mKGkt0O5o9po55KVbTFWWIN0ovxp8Kl5f2sde6V-U6t1hjSGWWFa79z1noom37AEbn_ifS30-j5QojGPU9sKyu20dmuKdMCN1yhOyizp_N2xnJoxt7hmSEwOqiYQ_6U1Tg-y5BmADWa-Gjv-2GnIo"/>
+<div class="flex-1 relative">
+<textarea class="w-full bg-surface-bright border border-outline-variant rounded-2xl p-4 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md resize-none" placeholder="Write a reply or tag team members..." rows="3"></textarea>
+<div class="absolute bottom-3 right-3 flex gap-2">
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">sentiment_satisfied</span>
+</button>
+<button class="px-5 py-2 bg-primary text-white font-bold rounded-xl hover:brightness-110 shadow-md transition-all">
+                                    Post Reply
+                                </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Sidebar (Properties & Activity) -->
+<aside class="w-80 bg-white border-l border-outline-variant flex flex-col h-full overflow-y-auto custom-scrollbar">
+<!-- Properties Section -->
+<div class="p-6 border-b border-outline-variant bg-surface-bright/50">
+<h4 class="text-label-md font-bold text-on-surface-variant uppercase tracking-widest mb-6">Task Properties</h4>
+<div class="space-y-5">
+<div>
+<p class="text-[11px] text-on-surface-variant font-bold uppercase tracking-wider mb-1">Status</p>
+<div class="flex items-center gap-2 text-body-md font-semibold text-primary">
+<span class="w-2 h-2 bg-primary rounded-full animate-pulse"></span>
+                                In Progress
+                            </div>
+</div>
+<div>
+<p class="text-[11px] text-on-surface-variant font-bold uppercase tracking-wider mb-1">Priority</p>
+<div class="flex items-center gap-2 text-body-md font-semibold text-error">
+<span class="material-symbols-outlined text-[18px]">priority_high</span>
+                                High
+                            </div>
+</div>
+<div>
+<p class="text-[11px] text-on-surface-variant font-bold uppercase tracking-wider mb-1">Due Date</p>
+<p class="text-body-md font-semibold text-on-surface">October 24, 2023</p>
+</div>
+<div>
+<p class="text-[11px] text-on-surface-variant font-bold uppercase tracking-wider mb-1">Created By</p>
+<div class="flex items-center gap-2">
+<img alt="Marcus" class="w-6 h-6 rounded-full" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBQD2RzYF3ukDgM1iQsDqftxykLRJNMgNt7uwHQbwV4IjtWC0EYDpsm8jAVKhWOiBt5oVXTonD6F28z-4nQOUBTCAZa9-O6UuDAUznVpPBRufiAXOoCI2TaHtNLGVdoZbSla9TIMfHJbV4XnMpwD0pPlF8pzv8iE1R9HLHorNPHfmYfqqJx9px2zWLwkZRm7oCay9EZvWjr_Dqa4NGuEtC_mQ3SNP0HFqKyZ_ioUEnIOUmpE0rn8J-u3QU8LlZXnah7dYgqmV3hZHQ"/>
+<p class="text-body-md font-semibold text-on-surface">Marcus Chen</p>
+</div>
+</div>
+<div>
+<p class="text-[11px] text-on-surface-variant font-bold uppercase tracking-wider mb-1">Project</p>
+<p class="text-body-md font-semibold text-secondary flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">rocket_launch</span>
+                                Core Infra v3
+                            </p>
+</div>
+</div>
+</div>
+<!-- Activity Timeline -->
+<div class="p-6">
+<h4 class="text-label-md font-bold text-on-surface-variant uppercase tracking-widest mb-6">Activity History</h4>
+<div class="relative space-y-6 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[2px] before:bg-surface-container">
+<!-- Activity Item 1 -->
+<div class="relative pl-8">
+<div class="absolute left-0 top-1 w-6 h-6 rounded-full bg-primary/10 border-2 border-white flex items-center justify-center z-10 shadow-sm">
+<span class="material-symbols-outlined text-[14px] text-primary" style="font-variation-settings: 'FILL' 1;">person_add</span>
+</div>
+<p class="text-body-md text-on-surface leading-tight">
+<span class="font-bold">Alex Thompson</span> assigned task to <span class="font-bold">Sarah Miller</span>
+</p>
+<p class="text-[11px] text-on-surface-variant mt-1">Today, 10:45 AM</p>
+</div>
+<!-- Activity Item 2 -->
+<div class="relative pl-8">
+<div class="absolute left-0 top-1 w-6 h-6 rounded-full bg-secondary-container/20 border-2 border-white flex items-center justify-center z-10 shadow-sm">
+<span class="material-symbols-outlined text-[14px] text-secondary" style="font-variation-settings: 'FILL' 1;">sync</span>
+</div>
+<p class="text-body-md text-on-surface leading-tight">
+                                Status changed to <span class="bg-primary/10 text-primary px-1.5 rounded font-bold">In Progress</span>
+</p>
+<p class="text-[11px] text-on-surface-variant mt-1">Yesterday, 4:20 PM</p>
+</div>
+<!-- Activity Item 3 -->
+<div class="relative pl-8">
+<div class="absolute left-0 top-1 w-6 h-6 rounded-full bg-tertiary/10 border-2 border-white flex items-center justify-center z-10 shadow-sm">
+<span class="material-symbols-outlined text-[14px] text-tertiary" style="font-variation-settings: 'FILL' 1;">attachment</span>
+</div>
+<p class="text-body-md text-on-surface leading-tight">
+<span class="font-bold">James L.</span> attached <span class="text-primary italic">Notes_Internal.txt</span>
+</p>
+<p class="text-[11px] text-on-surface-variant mt-1">Oct 20, 2023</p>
+</div>
+<!-- Activity Item 4 -->
+<div class="relative pl-8">
+<div class="absolute left-0 top-1 w-6 h-6 rounded-full bg-error/10 border-2 border-white flex items-center justify-center z-10 shadow-sm">
+<span class="material-symbols-outlined text-[14px] text-error" style="font-variation-settings: 'FILL' 1;">flag</span>
+</div>
+<p class="text-body-md text-on-surface leading-tight">
+                                Priority escalated to <span class="text-error font-bold">High</span> by <span class="font-bold">Marcus Chen</span>
+</p>
+<p class="text-[11px] text-on-surface-variant mt-1">Oct 19, 2023</p>
+</div>
+</div>
+<button class="w-full mt-10 py-3 text-label-md font-bold text-on-surface-variant border border-outline-variant rounded-xl hover:bg-surface-container transition-colors uppercase tracking-widest">
+                        View Full Audit Log
+                    </button>
+</div>
+<!-- Project Preview (Visual Anchor) -->
+<div class="mt-auto p-6">
+<div class="rounded-2xl overflow-hidden relative h-32 group cursor-pointer border border-outline-variant shadow-sm">
+<img class="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" data-alt="A futuristic, high-tech command center visualization with glowing blue data streams and digital interfaces representing global cloud infrastructure. The mood is professional and advanced, utilizing a deep navy and electric blue color palette with clean, sharp lighting to evoke a sense of precision and performance." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAo8sH1IQsmE_ZQo82lzGzUNufo80JRBdpXipeL8eVo0BfKbyIZ4e8-_kVWizC7aa2xxhY3Q1KCLoS94pHhV3CV7iBxzXhew6AqnHqNIsUCOdMTPidBA580lQVVTEIPvpYb8HgZO_C88lVOTBoxV0602byQU20rsIZYppY3i33b5MngQJMiA66jsB1OcL3Ndun9Hd7au6lW398RwSbnaGFL3s9JXCn9vCxnhIYhXNVqQeBYfEnhLzPQbdF-XQ037WF44f9M2-70TR0"/>
+<div class="absolute inset-0 bg-gradient-to-t from-secondary/90 to-transparent"></div>
+<div class="absolute bottom-4 left-4">
+<p class="text-white font-bold text-body-md">Project Canvas</p>
+<div class="flex items-center gap-2 mt-1">
+<div class="w-16 h-1 bg-white/20 rounded-full overflow-hidden">
+<div class="w-[65%] h-full bg-primary"></div>
+</div>
+<span class="text-[10px] text-white/80">65% Done</span>
+</div>
+</div>
+</div>
+</div>
+</aside>
+</div>
+</main>
+<!-- Floating Action for Quick Update (Contextual FAB) -->
+<button class="fixed bottom-8 right-8 w-14 h-14 bg-primary text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-all active:scale-95 group z-50" id="quick-action-fab">
+<span class="material-symbols-outlined group-hover:rotate-12 transition-transform">add_task</span>
+</button>
+<script>
+        // Micro-interaction: Active state handling for buttons
+        document.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('mousedown', () => btn.classList.add('scale-95'));
+            btn.addEventListener('mouseup', () => btn.classList.remove('scale-95'));
+            btn.addEventListener('mouseleave', () => btn.classList.remove('scale-95'));
+        });
+
+        // Simulating collaborative "presence" updates
+        setInterval(() => {
+            const avatar = document.querySelector('img[alt="Alex"]');
+            if (avatar) {
+                avatar.classList.toggle('ring-primary');
+                avatar.classList.toggle('ring-surface-tint/50');
+            }
+        }, 3000);
+    </script>
+</body></html>

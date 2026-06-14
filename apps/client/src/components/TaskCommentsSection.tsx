@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useState } from "react";
+﻿import React, { useCallback, useEffect, useState } from "react";
 import { api, APIError } from "../services/api";
 import type { TaskComment, User } from "../services/api";
 import { useSocket } from "../context/SocketContext";
+import { Button, ConfirmDialog, EmptyState, LoadingState, UserAvatar } from "./ui";
 
 interface TaskCommentsSectionProps {
   taskId: string;
@@ -26,6 +27,25 @@ function getErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
+function CommentActionIcon({ name }: { name: "edit" | "delete" }) {
+  const common = {
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 2,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true,
+    focusable: false,
+  };
+
+  if (name === "edit") {
+    return <svg {...common}><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>;
+  }
+
+  return <svg {...common}><path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6" /><path d="M14 11v6" /></svg>;
+}
+
 export default function TaskCommentsSection({
   taskId,
   currentUser,
@@ -40,6 +60,7 @@ export default function TaskCommentsSection({
   const [newComment, setNewComment] = useState("");
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
+  const [commentPendingDelete, setCommentPendingDelete] = useState<TaskComment | null>(null);
 
   const loadComments = useCallback(async () => {
     setLoading(true);
@@ -154,16 +175,14 @@ export default function TaskCommentsSection({
   };
 
   const handleDelete = async (comment: TaskComment) => {
-    if (!window.confirm("Delete this comment?")) return;
-
-    const reason = window.prompt("Reason for deletion (optional):") || undefined;
     setError(null);
     setSuccess(null);
     setSaving(true);
 
     try {
-      await api.tasks.deleteTaskComment(comment.id, reason);
+      await api.tasks.deleteTaskComment(comment.id);
       setComments((current) => current.filter((item) => item.id !== comment.id));
+      setCommentPendingDelete(null);
       setSuccess("Comment deleted.");
     } catch (err) {
       setError(getErrorMessage(err, "Failed to delete comment."));
@@ -199,38 +218,36 @@ export default function TaskCommentsSection({
         </div>
       )}
 
-      <form className="task-comment-form" onSubmit={handleCreate}>
-        <div className="form-group">
-          <label htmlFor={`task-comment-${taskId}`}>Add Comment</label>
+      <form className="task-comment-form comment-composer" onSubmit={handleCreate}>
+        <UserAvatar name={currentUser.name} size="sm" />
+        <div className="comment-composer-body">
+          <label className="sr-only" htmlFor={`task-comment-${taskId}`}>Add Comment</label>
           <textarea
             id={`task-comment-${taskId}`}
-            rows={3}
+            rows={2}
             value={newComment}
             onChange={(event) => setNewComment(event.target.value)}
             disabled={saving}
             maxLength={COMMENT_MAX_LENGTH}
-            placeholder="Write a comment"
+            placeholder="Write a comment..."
           />
-        </div>
-        <div className="task-comment-form-footer">
-          <span className="muted-text">
-            {newComment.trim().length}/{COMMENT_MAX_LENGTH}
-          </span>
-          <button className="btn btn-primary btn-sm" type="submit" disabled={saving}>
-            {saving ? <span className="spinner"></span> : "Add Comment"}
-          </button>
+          <div className="task-comment-form-footer comment-composer-footer">
+            <span className="muted-text">
+              {newComment.trim().length}/{COMMENT_MAX_LENGTH}
+            </span>
+            <Button type="submit" disabled={saving}>
+              {saving ? <span className="spinner"></span> : "Add Comment"}
+            </Button>
+          </div>
         </div>
       </form>
 
       {loading ? (
-        <div className="task-comments-loading">
-          <span className="spinner"></span>
-          <span>Loading comments...</span>
-        </div>
+        <LoadingState label="Loading comments..." />
       ) : comments.length === 0 ? (
-        <div className="task-comments-empty">No comments yet.</div>
+        <EmptyState title="No comments yet" description="Discussion and updates for this task will appear here." />
       ) : (
-        <div className="task-comments-list">
+        <div className="task-comments-list comment-thread">
           {comments.map((comment) => {
             const canEdit = comment.userId === currentUser.id;
             const canDelete = canEdit || isProjectPM;
@@ -238,15 +255,16 @@ export default function TaskCommentsSection({
             const isUpdated = comment.updatedAt !== comment.createdAt;
 
             return (
-              <div key={comment.id} className="task-comment-item">
-                <div className="task-comment-meta">
-                  <strong>{comment.userName || "Unknown user"}</strong>
-                  <span>{formatDateTime(comment.createdAt)}</span>
-                  {isUpdated && <span>Edited</span>}
-                </div>
+              <div key={comment.id} className="task-comment-item comment-item">
+                <UserAvatar name={comment.userName || "Unknown user"} size="sm" />
+                <div className="comment-content">
+                  <div className="task-comment-meta comment-meta">
+                    <span className="comment-author">{comment.userName || "Unknown user"}</span>
+                    <span className="comment-time">{formatDateTime(comment.createdAt)}{isUpdated ? " · Edited" : ""}</span>
+                  </div>
 
                 {isEditing ? (
-                  <div className="task-comment-edit">
+                  <div className="task-comment-edit comment-edit-box">
                     <textarea
                       rows={3}
                       value={editText}
@@ -254,7 +272,7 @@ export default function TaskCommentsSection({
                       disabled={saving}
                       maxLength={COMMENT_MAX_LENGTH}
                     />
-                    <div className="task-comment-actions">
+                    <div className="task-comment-actions comment-actions">
                       <button className="btn btn-secondary btn-xs" type="button" onClick={cancelEdit} disabled={saving}>
                         Cancel
                       </button>
@@ -265,17 +283,17 @@ export default function TaskCommentsSection({
                   </div>
                 ) : (
                   <>
-                    <p className="task-comment-text">{comment.commentText}</p>
+                    <p className="task-comment-text comment-bubble">{comment.commentText}</p>
                     {(canEdit || canDelete) && (
-                      <div className="task-comment-actions">
+                      <div className="task-comment-actions comment-actions">
                         {canEdit && (
-                          <button className="btn btn-secondary btn-xs" type="button" onClick={() => startEdit(comment)}>
-                            Edit
+                          <button className="comment-action-icon" type="button" aria-label="Edit comment" title="Edit" onClick={() => startEdit(comment)}>
+                            <CommentActionIcon name="edit" />
                           </button>
                         )}
                         {canDelete && (
-                          <button className="btn btn-danger btn-xs" type="button" onClick={() => handleDelete(comment)}>
-                            Delete
+                          <button className="comment-action-icon comment-action-icon--danger" type="button" aria-label="Delete comment" title="Delete" onClick={() => setCommentPendingDelete(comment)}>
+                            <CommentActionIcon name="delete" />
                           </button>
                         )}
                       </div>
@@ -283,10 +301,26 @@ export default function TaskCommentsSection({
                   </>
                 )}
               </div>
+              </div>
             );
           })}
         </div>
       )}
+      <ConfirmDialog
+        open={Boolean(commentPendingDelete)}
+        title="Delete comment?"
+        description="This comment will be removed from the task discussion. This action cannot be undone."
+        confirmLabel="Delete"
+        variant="danger"
+        isLoading={saving}
+        onCancel={() => setCommentPendingDelete(null)}
+        onConfirm={() => {
+          if (commentPendingDelete) {
+            return handleDelete(commentPendingDelete);
+          }
+        }}
+      />
     </div>
   );
 }
+

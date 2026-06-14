@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { NotificationDTO } from "../services/api";
 import { useNotifications } from "../context/NotificationContext";
 import { useRouter } from "./Router";
+import { Button, LoadingState } from "./ui";
 
 function formatNotificationTime(value: string): string {
   const createdAt = new Date(value).getTime();
@@ -27,6 +28,26 @@ function getProjectId(notification: NotificationDTO): string | null {
   return typeof projectId === "string" && projectId ? projectId : null;
 }
 
+function getNotificationIcon(type: NotificationDTO["type"]): string {
+  switch (type) {
+    case "task_assigned":
+      return "A";
+    case "task_status_changed":
+    case "task_updated":
+      return "S";
+    case "comment_added":
+      return "C";
+    case "deadline_approaching":
+      return "D";
+    case "admin_update":
+      return "U";
+    case "project_updated":
+      return "P";
+    default:
+      return "N";
+  }
+}
+
 export default function NotificationBell() {
   const { navigate } = useRouter();
   const {
@@ -39,6 +60,8 @@ export default function NotificationBell() {
   } = useNotifications();
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement | null>(null);
+  const latestNotifications = notifications.slice(0, 5);
+  const hasMoreNotifications = notifications.length > latestNotifications.length;
 
   useEffect(() => {
     if (!open) return;
@@ -67,6 +90,11 @@ export default function NotificationBell() {
     }
   };
 
+  const handleViewAll = () => {
+    navigate("/notifications");
+    setOpen(false);
+  };
+
   return (
     <div className="notification-shell" ref={panelRef}>
       <button
@@ -90,35 +118,52 @@ export default function NotificationBell() {
         <div className="notification-panel">
           <div className="notification-panel-header">
             <h2>Notifications</h2>
-            <button
-              type="button"
-              className="notification-mark-all"
-              onClick={markAllAsRead}
-              disabled={unreadCount === 0}
-            >
-              Mark all as read
-            </button>
+            {notifications.length > 0 && (
+              <Button
+                type="button"
+                variant="ghost"
+                className="notification-mark-all"
+                onClick={markAllAsRead}
+                disabled={unreadCount === 0}
+              >
+                Mark all as read
+              </Button>
+            )}
           </div>
 
           {error && <p className="notification-error">{error}</p>}
 
           <div className="notification-list">
             {loading && notifications.length === 0 && (
-              <div className="notification-empty">Loading notifications...</div>
+              <LoadingState label="Loading notifications..." />
             )}
 
             {!loading && notifications.length === 0 && (
-              <div className="notification-empty">No notifications yet</div>
+              <div className="notification-empty" role="status">
+                <span className="notification-empty-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" focusable="false">
+                    <path d="M18 16v-5a6 6 0 0 0-12 0v5l-2 2h16l-2-2Z" />
+                    <path d="M9.5 20a2.5 2.5 0 0 0 5 0" />
+                    <path d="m4 4 16 16" />
+                  </svg>
+                </span>
+                <strong className="notification-empty-title">No notifications yet</strong>
+                <span className="notification-empty-message">
+                  Task assignments, comments, and deadline alerts will appear here.
+                </span>
+              </div>
             )}
 
-            {notifications.map((notification) => (
+            {latestNotifications.map((notification) => (
               <button
                 key={notification.id}
                 type="button"
                 className={`notification-item ${notification.readAt ? "read" : "unread"}`}
                 onClick={() => handleNotificationClick(notification)}
               >
-                <span className="notification-unread-dot" aria-hidden="true" />
+                <span className="notification-type-icon" aria-hidden="true">
+                  {getNotificationIcon(notification.type)}
+                </span>
                 <span className="notification-copy">
                   <strong>{notification.title}</strong>
                   <span>{notification.message}</span>
@@ -127,6 +172,11 @@ export default function NotificationBell() {
               </button>
             ))}
           </div>
+          {hasMoreNotifications && (
+            <button type="button" className="notification-view-all" onClick={handleViewAll}>
+              View all notifications
+            </button>
+          )}
         </div>
       )}
     </div>
