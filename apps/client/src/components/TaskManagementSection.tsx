@@ -409,6 +409,67 @@ export default function TaskManagementSection({
     return "Offline";
   };
 
+  const renderTaskActions = (task: Task) => (
+    <div className="task-action-group">
+      <button
+        type="button"
+        className="task-action-icon task-action-icon--details"
+        aria-label="View task details"
+        title="Details"
+        data-tooltip="Details"
+        onClick={() => setSelectedTaskId(task.id)}
+      >
+        <TaskActionIcon name="details" />
+      </button>
+      <button
+        type="button"
+        className="task-action-icon task-action-icon--comments"
+        aria-label={commentsTaskId === task.id ? "Hide task comments" : "Show task comments"}
+        title={commentsTaskId === task.id ? "Hide comments" : "Comments"}
+        data-tooltip={commentsTaskId === task.id ? "Hide comments" : "Comments"}
+        onClick={() => toggleComments(task.id)}
+      >
+        <TaskActionIcon name="comments" />
+      </button>
+      <button
+        type="button"
+        className="task-action-icon task-action-icon--attachments"
+        aria-label={attachmentsTaskId === task.id ? "Hide task attachments" : "Show task attachments"}
+        title={attachmentsTaskId === task.id ? "Hide attachments" : "Attachments"}
+        data-tooltip={attachmentsTaskId === task.id ? "Hide attachments" : "Attachments"}
+        onClick={() => toggleAttachments(task.id)}
+      >
+        <TaskActionIcon name="attachments" />
+      </button>
+      {isProjectPM ? (
+        <>
+          <button
+            type="button"
+            className="task-action-icon task-action-icon--edit"
+            aria-label="Edit task"
+            title="Edit"
+            data-tooltip="Edit"
+            onClick={() => openEditForm(task)}
+          >
+            <TaskActionIcon name="edit" />
+          </button>
+          <button
+            type="button"
+            className="task-action-icon task-action-icon--danger"
+            aria-label="Delete task"
+            title="Delete"
+            data-tooltip="Delete"
+            onClick={() => setTaskPendingDelete(task)}
+          >
+            <TaskActionIcon name="delete" />
+          </button>
+        </>
+      ) : (
+        <span className="muted-text">Status only</span>
+      )}
+    </div>
+  );
+
   return (
     <section className="tasks-section task-section modern-task-workflow">
       <div className="card task-panel">
@@ -661,6 +722,7 @@ export default function TaskManagementSection({
         ) : filteredTasks.length === 0 ? (
           <EmptyState title="No tasks found" description="Adjust filters or create the first task for this project." />
         ) : (
+          <>
           <div className="table-responsive task-table-wrap">
             <table className="users-table task-table modern-task-table">
               <thead>
@@ -716,64 +778,7 @@ export default function TaskManagementSection({
                       </td>
                       <td>{formatDateTime(task.updatedAt)}</td>
                       <td>
-                        <div className="task-action-group">
-                          <button
-                            type="button"
-                            className="task-action-icon task-action-icon--details"
-                            aria-label="View task details"
-                            title="Details"
-                            data-tooltip="Details"
-                            onClick={() => setSelectedTaskId(task.id)}
-                          >
-                            <TaskActionIcon name="details" />
-                          </button>
-                          <button
-                            type="button"
-                            className="task-action-icon task-action-icon--comments"
-                            aria-label={commentsTaskId === task.id ? "Hide task comments" : "Show task comments"}
-                            title={commentsTaskId === task.id ? "Hide comments" : "Comments"}
-                            data-tooltip={commentsTaskId === task.id ? "Hide comments" : "Comments"}
-                            onClick={() => toggleComments(task.id)}
-                          >
-                            <TaskActionIcon name="comments" />
-                          </button>
-                          <button
-                            type="button"
-                            className="task-action-icon task-action-icon--attachments"
-                            aria-label={attachmentsTaskId === task.id ? "Hide task attachments" : "Show task attachments"}
-                            title={attachmentsTaskId === task.id ? "Hide attachments" : "Attachments"}
-                            data-tooltip={attachmentsTaskId === task.id ? "Hide attachments" : "Attachments"}
-                            onClick={() => toggleAttachments(task.id)}
-                          >
-                            <TaskActionIcon name="attachments" />
-                          </button>
-                          {isProjectPM ? (
-                            <>
-                              <button
-                                type="button"
-                                className="task-action-icon task-action-icon--edit"
-                                aria-label="Edit task"
-                                title="Edit"
-                                data-tooltip="Edit"
-                                onClick={() => openEditForm(task)}
-                              >
-                                <TaskActionIcon name="edit" />
-                              </button>
-                              <button
-                                type="button"
-                                className="task-action-icon task-action-icon--danger"
-                                aria-label="Delete task"
-                                title="Delete"
-                                data-tooltip="Delete"
-                                onClick={() => setTaskPendingDelete(task)}
-                              >
-                                <TaskActionIcon name="delete" />
-                              </button>
-                            </>
-                          ) : (
-                            <span className="muted-text">Status only</span>
-                          )}
-                        </div>
+                        {renderTaskActions(task)}
                       </td>
                     </tr>
                     {attachmentsTaskId === task.id && (
@@ -803,6 +808,62 @@ export default function TaskManagementSection({
               </tbody>
             </table>
           </div>
+          <div className="mobile-task-card-list">
+            {filteredTasks.map((task) => (
+              <article key={task.id} className="mobile-task-card">
+                <div className="mobile-task-card-header">
+                  <div>
+                    <strong>{task.title}</strong>
+                    {task.description && <p>{task.description}</p>}
+                  </div>
+                  <Badge variant={task.priority}>{PRIORITY_LABELS[task.priority]}</Badge>
+                </div>
+                <dl className="mobile-task-meta">
+                  <div><dt>Project</dt><dd>{projectName}</dd></div>
+                  <div>
+                    <dt>Assignees</dt>
+                    <dd>
+                      <div className="task-assignees-cell avatar-stack">
+                        {task.assignees.length === 0
+                          ? <span className="muted-text">Unassigned</span>
+                          : task.assignees.map((assignee) => (
+                              <UserAvatar key={assignee.id} name={assignee.userName} size="sm" />
+                            ))}
+                      </div>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Status</dt>
+                    <dd>
+                      {isProjectPM ? (
+                        <Badge variant={task.status}>{STATUS_LABELS[task.status]}</Badge>
+                      ) : (
+                        <select
+                          className="task-status-select"
+                          value={task.status}
+                          onChange={(event) => handleCollaboratorStatusChange(task, event.target.value as TaskStatus)}
+                        >
+                          <option value="to_do">To Do</option>
+                          <option value="in_progress">In Progress</option>
+                          <option value="completed">Completed</option>
+                        </select>
+                      )}
+                    </dd>
+                  </div>
+                  <div><dt>Due</dt><dd><span className={`due-chip due-${getDueState(task)}`}>{formatDate(task.dueDate)}</span></dd></div>
+                  <div><dt>Updated</dt><dd>{formatDateTime(task.updatedAt)}</dd></div>
+                </dl>
+                <div className="mobile-task-actions">{renderTaskActions(task)}</div>
+                {attachmentsTaskId === task.id && (
+                  <TaskAttachmentsSection taskId={task.id} currentUser={currentUser} isProjectPM={isProjectPM} />
+                )}
+                {commentsTaskId === task.id && (
+                  <TaskCommentsSection taskId={task.id} currentUser={currentUser} isProjectPM={isProjectPM} />
+                )}
+              </article>
+            ))}
+          </div>
+          </>
         )}
 
         {selectedTask && (

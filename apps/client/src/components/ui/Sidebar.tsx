@@ -13,6 +13,9 @@ interface SidebarProps {
   currentUser: User;
   navItems: NavItem[];
   onNavigate: (path: string) => void;
+  onLogout: () => void;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
 function NavIcon({ name }: { name?: string }) {
@@ -43,14 +46,16 @@ function NavIcon({ name }: { name?: string }) {
       return <svg {...common}><path d="M4 21v-7" /><path d="M4 10V3" /><path d="M12 21v-9" /><path d="M12 8V3" /><path d="M20 21v-5" /><path d="M20 12V3" /><path d="M2 14h4" /><path d="M10 8h4" /><path d="M18 16h4" /></svg>;
     case "settings":
       return <svg {...common}><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" /><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 8.6a1.7 1.7 0 0 0-.34-1.88l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3a2 2 0 1 1 4 0v.09A1.7 1.7 0 0 0 15.4 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.36.19.72.32 1.1.4H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1Z" /></svg>;
+    case "logout":
+      return <svg {...common}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="M16 17l5-5-5-5" /><path d="M21 12H9" /></svg>;
     default:
       return <svg {...common}><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /></svg>;
   }
 }
 
-export default function Sidebar({ currentUser, navItems, onNavigate }: SidebarProps) {
+export default function Sidebar({ currentUser, navItems, onNavigate, onLogout, isOpen = false, onClose }: SidebarProps) {
   return (
-    <aside className="veyra-sidebar">
+    <aside className={`veyra-sidebar ${isOpen ? "is-open" : ""}`}>
       <button type="button" className="veyra-sidebar-brand" onClick={() => onNavigate("/")}>
         <img src={logoUrl} alt="Veyra" />
         <span>Veyra</span>
@@ -64,7 +69,10 @@ export default function Sidebar({ currentUser, navItems, onNavigate }: SidebarPr
               key={`${item.label}-${item.path}`}
               type="button"
               className={`veyra-sidebar-link ${item.active ? "active" : ""}`}
-              onClick={() => onNavigate(item.path)}
+              onClick={() => {
+                onNavigate(item.path);
+                onClose?.();
+              }}
             >
               <span className="veyra-sidebar-icon" aria-hidden="true"><NavIcon name={item.icon} /></span>
               {item.label}
@@ -73,10 +81,21 @@ export default function Sidebar({ currentUser, navItems, onNavigate }: SidebarPr
         </nav>
       </div>
 
-      <div className="veyra-sidebar-footer">
+      <div className="veyra-sidebar-footer mobile-sidebar-footer">
         <p>Signed in as</p>
         <strong>{currentUser.name}</strong>
         <Badge variant={currentUser.role}>{currentUser.role.replace("_", " ")}</Badge>
+        <button
+          type="button"
+          className="sidebar-signout-button mobile-sidebar-signout"
+          onClick={() => {
+            onClose?.();
+            onLogout();
+          }}
+        >
+          <span className="veyra-sidebar-icon" aria-hidden="true"><NavIcon name="logout" /></span>
+          Sign Out
+        </button>
       </div>
     </aside>
   );

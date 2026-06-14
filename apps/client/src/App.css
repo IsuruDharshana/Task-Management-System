@@ -5456,6 +5456,673 @@ strong {
   overflow: visible;
 }
 
+/* ==========================================================================
+   App-Wide Responsive Layout
+   ========================================================================== */
+
+:root {
+  --sidebar-width: 280px;
+  --topbar-height: 72px;
+  --page-padding-desktop: 32px;
+  --page-padding-tablet: 24px;
+  --page-padding-mobile: 16px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+img,
+svg {
+  max-width: 100%;
+}
+
+button,
+.btn,
+.veyra-button,
+input,
+select,
+textarea {
+  min-height: 44px;
+}
+
+.app-shell.veyra-app-layout {
+  display: block;
+  min-height: 100vh;
+}
+
+.veyra-sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: var(--sidebar-width);
+  height: 100vh;
+  min-height: 100vh;
+  z-index: 80;
+}
+
+.veyra-content-shell {
+  min-width: 0;
+  margin-left: var(--sidebar-width);
+}
+
+.app-main-content,
+.app-content,
+.page-content {
+  width: 100%;
+  min-width: 0;
+  padding: var(--page-padding-desktop);
+}
+
+.app-main-content > .veyra-page,
+.project-details-page,
+.dashboard-page,
+.projects-list-page,
+.admin-panel,
+.activity-page,
+.settings-page {
+  width: 100%;
+  max-width: 1280px;
+  min-width: 0;
+  margin-inline: auto;
+}
+
+.mobile-menu-button,
+.mobile-sidebar-backdrop {
+  display: none;
+}
+
+.veyra-topbar-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.veyra-topbar-title > div {
+  min-width: 0;
+}
+
+.header-actions,
+.project-hero-actions,
+.form-actions,
+.veyra-confirm-actions {
+  min-width: 0;
+}
+
+.modern-page-header,
+.section-heading-row,
+.project-hero,
+.workspace-header,
+.members-card-header {
+  min-width: 0;
+}
+
+.modern-page-header > div,
+.section-heading-row > div,
+.project-hero > div,
+.workspace-header > div,
+.members-card-header > div {
+  min-width: 0;
+}
+
+.modern-page-header h1,
+.project-hero h1,
+.workspace-header h2,
+.card h2,
+.project-title,
+.task-title-cell,
+.member-name,
+.member-email,
+.dashboard-task-item strong,
+.dashboard-project-row strong {
+  overflow-wrap: anywhere;
+}
+
+.modern-metrics-grid,
+.admin-dashboard-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.project-overview-grid,
+.project-stats-grid,
+.project-stat-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.dashboard-work-grid,
+.admin-insight-grid,
+.project-summary-grid {
+  grid-template-columns: minmax(0, 1.55fr) minmax(300px, 0.8fr);
+}
+
+.modern-projects-grid,
+.projects-grid,
+.project-grid {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.project-toolbar,
+.admin-user-toolbar,
+.modern-task-workflow .task-filters,
+.task-filters {
+  min-width: 0;
+}
+
+.table-responsive,
+.task-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.users-table,
+.task-table,
+.modern-users-table,
+.modern-task-table {
+  min-width: 760px;
+}
+
+.mobile-task-card-list,
+.mobile-user-card-list {
+  display: none;
+}
+
+.modal-backdrop,
+.veyra-modal-backdrop,
+.veyra-confirm-backdrop {
+  padding: 16px;
+}
+
+.modal-card,
+.veyra-modal,
+.veyra-confirm-dialog {
+  width: min(520px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+}
+
+.notification-panel {
+  right: 0;
+}
+
+@media (max-width: 1279px) {
+  .app-main-content,
+  .app-content,
+  .page-content {
+    padding: var(--page-padding-tablet);
+  }
+
+  .dashboard-work-grid,
+  .admin-insight-grid,
+  .project-summary-grid,
+  .task-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .project-toolbar {
+    grid-template-columns: minmax(0, 1fr) minmax(180px, 240px);
+  }
+}
+
+@media (max-width: 1023px) {
+  .modern-page-header,
+  .section-heading-row,
+  .project-hero,
+  .workspace-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .header-actions,
+  .project-hero-actions {
+    flex-wrap: wrap;
+  }
+
+  .modern-task-workflow .task-filters,
+  .task-filters,
+  .admin-user-toolbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .task-filter-apply {
+    width: 100%;
+  }
+
+  .project-dates-section {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .veyra-sidebar {
+    width: min(var(--sidebar-width), 86vw);
+    transform: translateX(-105%);
+    transition: transform 220ms ease;
+    box-shadow: 24px 0 60px rgba(15, 23, 42, 0.24);
+  }
+
+  .veyra-sidebar.is-open {
+    transform: translateX(0);
+  }
+
+  .veyra-content-shell {
+    margin-left: 0;
+  }
+
+  .mobile-sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    display: block;
+    border: 0;
+    background: rgba(15, 23, 42, 0.42);
+    cursor: pointer;
+  }
+
+  .mobile-menu-button {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #d8e2f0;
+    border-radius: 12px;
+    background: #ffffff;
+    color: #0e3191;
+    cursor: pointer;
+  }
+
+  .mobile-menu-button svg {
+    width: 22px;
+    height: 22px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+  }
+
+  .veyra-topbar {
+    min-height: 64px;
+    height: auto;
+    padding: 12px 16px;
+    gap: 12px;
+  }
+
+  .veyra-topbar-kicker {
+    display: none;
+  }
+
+  .veyra-topbar h1 {
+    max-width: 42vw;
+    margin: 0;
+    font-size: 16px;
+  }
+
+  .veyra-topbar-actions {
+    gap: 8px;
+  }
+
+  .veyra-topbar-user {
+    padding: 4px;
+  }
+
+  .veyra-topbar-user > div,
+  .veyra-topbar-user .badge {
+    display: none;
+  }
+
+  .veyra-topbar-actions > .veyra-button,
+  .veyra-topbar-actions > .btn {
+    display: none;
+  }
+
+  .notification-panel {
+    position: fixed;
+    top: calc(var(--topbar-height) + 8px);
+    right: 16px;
+    left: 16px;
+    width: auto;
+    max-width: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .app-main-content,
+  .app-content,
+  .page-content {
+    padding: var(--page-padding-mobile);
+  }
+
+  .login-container {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 1fr;
+    background: #f6f8fc;
+  }
+
+  .login-brand-panel {
+    min-height: auto;
+    padding: 28px 20px 8px;
+  }
+
+  .login-brand-copy h1 {
+    font-size: 34px;
+    line-height: 1.05;
+  }
+
+  .login-brand-copy p,
+  .login-floating-card,
+  .login-copyright {
+    display: none;
+  }
+
+  .login-form-panel {
+    padding: 20px;
+    align-items: start;
+  }
+
+  .login-card {
+    width: 100%;
+    max-width: 420px;
+    margin-inline: auto;
+    padding: 24px;
+  }
+
+  .modern-page-header,
+  .section-heading-row {
+    gap: 16px;
+    margin-bottom: 18px;
+  }
+
+  .modern-page-header h1,
+  .section-heading-row h1,
+  .project-hero h1 {
+    font-size: 26px;
+  }
+
+  .header-actions,
+  .project-hero-actions,
+  .form-actions {
+    width: 100%;
+  }
+
+  .header-actions > *,
+  .project-hero-actions > *,
+  .form-actions > * {
+    flex: 1 1 100%;
+  }
+
+  .project-toolbar,
+  .admin-user-toolbar,
+  .modern-task-workflow .task-filters,
+  .task-filters,
+  .admin-create-form,
+  .project-form .form-row,
+  .form-row,
+  .project-dates-section {
+    grid-template-columns: 1fr;
+  }
+
+  .project-workspace-card,
+  .project-summary-grid .overview-card,
+  .project-summary-grid .upcoming-deadlines-card,
+  .card {
+    padding: 18px;
+  }
+
+  .workspace-tabbar {
+    gap: 28px;
+    overflow-x: auto;
+  }
+
+  .workspace-tab {
+    flex: 0 0 auto;
+  }
+
+  .project-stat-grid,
+  .project-stats-grid,
+  .project-overview-grid,
+  .modern-metrics-grid,
+  .admin-dashboard-grid,
+  .modern-projects-grid,
+  .projects-grid,
+  .project-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .task-table-wrap {
+    display: none;
+  }
+
+  .mobile-task-card-list {
+    display: grid;
+    gap: 14px;
+  }
+
+  .mobile-task-card {
+    min-width: 0;
+    display: grid;
+    gap: 14px;
+    padding: 16px;
+    border: 1px solid #d8e2f0;
+    border-radius: 16px;
+    background: #ffffff;
+  }
+
+  .mobile-task-card-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .mobile-task-card-header strong {
+    color: #0f172a;
+    font-size: 15px;
+    overflow-wrap: anywhere;
+  }
+
+  .mobile-task-card-header p {
+    margin: 6px 0 0;
+    color: #64748b;
+    font-size: 13px;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+  }
+
+  .mobile-task-meta,
+  .mobile-user-meta {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+  }
+
+  .mobile-task-meta div,
+  .mobile-user-meta div {
+    display: grid;
+    gap: 4px;
+  }
+
+  .mobile-task-meta dt,
+  .mobile-user-meta dt {
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .mobile-task-meta dd,
+  .mobile-user-meta dd {
+    min-width: 0;
+    margin: 0;
+    color: #0f172a;
+    font-size: 13px;
+    overflow-wrap: anywhere;
+  }
+
+  .mobile-task-actions .task-action-group {
+    gap: 10px;
+  }
+
+  .task-action-icon {
+    width: 44px;
+    height: 44px;
+  }
+
+  .task-action-icon::after {
+    display: none;
+  }
+
+  .admin-users-card .table-responsive {
+    display: none;
+  }
+
+  .mobile-user-card-list {
+    display: grid;
+    gap: 14px;
+  }
+
+  .mobile-user-card {
+    display: grid;
+    gap: 14px;
+    padding: 16px;
+    border: 1px solid #d8e2f0;
+    border-radius: 16px;
+    background: #ffffff;
+  }
+
+  .mobile-user-card-header {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 12px;
+    align-items: center;
+  }
+
+  .mobile-user-card-header strong,
+  .mobile-user-card-header span {
+    display: block;
+    overflow-wrap: anywhere;
+  }
+
+  .mobile-user-card-header span {
+    color: #64748b;
+    font-size: 13px;
+  }
+
+  .mobile-user-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .admin-row-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .admin-row-actions > * {
+    flex: 1 1 auto;
+  }
+
+  .task-detail-grid,
+  .task-detail-sections,
+  .comment-composer,
+  .comment-item,
+  .task-attachment-main {
+    grid-template-columns: 1fr;
+  }
+
+  .comment-composer > .veyra-avatar,
+  .comment-item > .veyra-avatar {
+    display: none;
+  }
+
+  .member-item {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .member-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+
+  .veyra-modal-header,
+  .veyra-confirm-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .veyra-modal-header .veyra-button,
+  .veyra-confirm-actions .veyra-button,
+  .modal-card .form-actions .veyra-button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-main-content,
+  .app-content,
+  .page-content {
+    padding: 12px;
+  }
+
+  .veyra-topbar {
+    padding: 10px 12px;
+  }
+
+  .veyra-topbar h1 {
+    max-width: 38vw;
+    font-size: 14px;
+  }
+
+  .notification-panel {
+    top: 68px;
+    right: 8px;
+    left: 8px;
+  }
+
+  .login-brand-panel {
+    padding: 22px 16px 0;
+  }
+
+  .login-brand-copy h1 {
+    display: none;
+  }
+
+  .login-card {
+    padding: 20px;
+    border-radius: 16px;
+  }
+
+  .project-workspace-card,
+  .project-summary-grid .overview-card,
+  .project-summary-grid .upcoming-deadlines-card,
+  .card {
+    padding: 16px;
+  }
+
+  .mobile-task-card-header {
+    flex-direction: column;
+  }
+
+  .comment-composer-footer,
+  .task-comment-form-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
 .project-workspace-card .tasks-section,
 .project-workspace-card .task-panel {
   width: 100%;
@@ -5564,5 +6231,736 @@ strong {
 
   .project-workspace-card .task-filters {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Final app-shell guard: keep mobile sidebar as a real off-canvas drawer. */
+.app-shell.veyra-app-layout {
+  display: block;
+  min-height: 100vh;
+}
+
+.app-shell .veyra-sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 280px;
+  height: 100vh;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  z-index: 100;
+}
+
+.app-shell .veyra-sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.app-shell .veyra-sidebar-link {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.app-shell .veyra-content-shell {
+  margin-left: 280px;
+  min-height: 100vh;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-shell .app-main-content {
+  padding-top: 32px;
+}
+
+@media (max-width: 900px) {
+  .app-shell .veyra-sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: min(280px, 86vw);
+    height: 100vh;
+    min-height: 100vh;
+    transform: translateX(-100%);
+    transition: transform 220ms ease;
+    z-index: 100;
+  }
+
+  .app-shell .veyra-sidebar.is-open {
+    transform: translateX(0);
+  }
+
+  .app-shell .veyra-content-shell {
+    margin-left: 0;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .app-shell .veyra-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 60;
+    min-height: 64px;
+    height: auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-direction: row;
+    gap: 12px;
+    padding: 10px 16px;
+  }
+
+  .app-shell .veyra-topbar-title {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .app-shell .veyra-topbar-title h1 {
+    max-width: 46vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .app-shell .veyra-topbar-actions {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .app-shell .mobile-menu-button {
+    display: inline-flex;
+  }
+
+  .app-shell .mobile-sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    display: block;
+    border: 0;
+    background: rgba(15, 23, 42, 0.48);
+    cursor: pointer;
+  }
+
+  .app-shell .app-content,
+  .app-shell .page-content,
+  .app-shell .app-main-content {
+    width: 100%;
+    max-width: none;
+    padding: 20px 16px 32px;
+    margin: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-shell .veyra-topbar {
+    padding: 10px 12px;
+  }
+
+  .app-shell .veyra-topbar-title h1 {
+    max-width: 40vw;
+    font-size: 14px;
+  }
+
+  .app-shell .app-content,
+  .app-shell .page-content,
+  .app-shell .app-main-content {
+    padding: 16px 12px 28px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell .veyra-sidebar,
+  .app-shell .mobile-sidebar-backdrop {
+    transition: none;
+  }
+}
+
+/* Final mobile topbar and native select fixes */
+@media (max-width: 900px) {
+  .app-shell .veyra-topbar {
+    width: 100%;
+    max-width: 100vw;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 12px;
+    padding: 12px 16px;
+    overflow: visible;
+  }
+
+  .app-shell .veyra-topbar-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .app-shell .mobile-menu-button {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    flex: 0 0 44px;
+  }
+
+  .app-shell .veyra-topbar-actions {
+    flex: 0 0 auto;
+    min-width: 44px;
+    max-width: max-content;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .app-shell .notification-shell {
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .app-shell .notification-bell {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    flex: 0 0 44px;
+    margin: 0;
+  }
+
+  .app-shell .veyra-topbar-user {
+    flex: 0 0 44px;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    padding: 2px;
+    overflow: hidden;
+  }
+}
+
+.veyra-select,
+.form-group select:not([multiple]),
+.task-filters select,
+.project-toolbar select,
+.admin-user-toolbar select,
+.task-status-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 0 44px 0 16px;
+  border: 1px solid #d8e2f0;
+  border-radius: 10px;
+  background-color: #ffffff;
+  color: #0f172a;
+  font-size: 14px;
+  line-height: 44px;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%230E3191' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 18px 18px;
+}
+
+.veyra-select:focus,
+.form-group select:not([multiple]):focus,
+.task-filters select:focus,
+.project-toolbar select:focus,
+.admin-user-toolbar select:focus,
+.task-status-select:focus {
+  outline: none;
+  border-color: #296ef9;
+  box-shadow: 0 0 0 3px rgba(41, 110, 249, 0.14);
+}
+
+@media (max-width: 700px) {
+  .project-toolbar,
+  .admin-user-toolbar,
+  .task-filters,
+  .modern-task-workflow .task-filters {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+    width: 100%;
+  }
+
+  .project-toolbar .veyra-field,
+  .admin-user-toolbar .veyra-field,
+  .task-filters .form-group,
+  .task-filters .veyra-field {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .project-toolbar input,
+  .project-toolbar select,
+  .admin-user-toolbar input,
+  .admin-user-toolbar select,
+  .task-filters input,
+  .task-filters select {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+/* Task details, attachments, and workspace task controls mobile fixes */
+.task-detail-drawer,
+.task-detail-grid,
+.task-detail-sections,
+.task-detail-sections > div,
+.task-attachments-section,
+.task-attachment-form,
+.task-attachments-list,
+.task-attachment-item,
+.task-attachment-main {
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.task-attachments-section {
+  overflow-x: hidden;
+}
+
+.task-attachment-form input[type="text"],
+.attachment-file-input {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.attachment-file-input {
+  min-height: 44px;
+  padding: 8px;
+  border: 1px solid #d8e2f0;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 14px;
+  overflow: hidden;
+}
+
+.attachment-file-input::file-selector-button {
+  min-height: 34px;
+  margin-right: 12px;
+  border: 1px solid #d8e2f0;
+  border-radius: 10px;
+  background: #eaf2ff;
+  color: #0e3191;
+  padding: 8px 14px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.task-attachment-main strong,
+.task-attachment-main span,
+.task-attachments-section .veyra-empty-state p {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  text-overflow: unset;
+  overflow: visible;
+}
+
+.task-action-group,
+.task-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  min-width: 0;
+}
+
+@media (max-width: 700px) {
+  .task-detail-drawer,
+  .task-detail-grid,
+  .task-detail-sections,
+  .task-detail-sections > div,
+  .task-attachments-section,
+  .task-attachment-form,
+  .task-attachments-list,
+  .task-attachment-item,
+  .task-attachment-main {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .task-detail-grid,
+  .task-detail-sections,
+  .task-attachment-main {
+    grid-template-columns: 1fr;
+  }
+
+  .task-attachment-form {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+    padding: 14px;
+    overflow-x: hidden;
+  }
+
+  .task-attachment-form .form-group {
+    width: 100%;
+    min-width: 0;
+    margin-bottom: 0;
+  }
+
+  .task-attachment-form .task-comment-form-footer {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    align-items: stretch;
+  }
+
+  .task-attachment-form .task-comment-form-footer .veyra-button,
+  .task-attachment-form button[type="submit"] {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .task-attachments-section .veyra-empty-state {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    text-align: center;
+    padding: 32px 20px;
+    overflow: visible;
+  }
+
+  .task-attachments-section .veyra-empty-state p {
+    max-width: 320px;
+    margin: 10px auto 0;
+    line-height: 1.5;
+    color: #64748b;
+  }
+
+  .task-attachment-item {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+    padding: 14px;
+    overflow-x: hidden;
+  }
+
+  .task-attachment-main {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 10px 12px;
+  }
+
+  .task-attachment-main strong,
+  .task-attachment-main .task-comment-meta {
+    grid-column: 2;
+    min-width: 0;
+  }
+
+  .task-attachment-item .task-comment-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .task-attachment-item .task-comment-actions button {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .task-section-header {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+
+  .task-header-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    align-items: stretch;
+    justify-content: stretch;
+  }
+
+  .task-header-actions .socket-status {
+    grid-column: 1 / -1;
+    justify-self: start;
+    width: auto;
+  }
+
+  .task-header-actions button,
+  .task-header-actions .veyra-button {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .task-action-icon {
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+  }
+}
+
+@media (max-width: 420px) {
+  .task-header-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Mobile drawer sign out and notification panel containment */
+.sidebar-signout-button {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .app-shell .veyra-sidebar-footer {
+    margin-top: auto;
+    padding: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.14);
+  }
+
+  .app-shell .sidebar-signout-button {
+    width: 100%;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+    cursor: pointer;
+    font-weight: 650;
+  }
+
+  .app-shell .sidebar-signout-button:hover,
+  .app-shell .sidebar-signout-button:focus-visible {
+    background: rgba(255, 255, 255, 0.14);
+    outline: none;
+  }
+}
+
+.notification-panel,
+.notification-list,
+.notification-item,
+.notification-copy {
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+.notification-copy strong,
+.notification-copy span,
+.notification-copy time {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  text-overflow: unset;
+}
+
+@media (max-width: 700px) {
+  .notification-panel {
+    position: fixed;
+    top: 76px;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-width: none;
+    max-height: calc(100vh - 96px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    border-radius: 18px;
+    z-index: 120;
+    transform: none;
+  }
+
+  .notification-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px 18px;
+  }
+
+  .notification-panel-header h2 {
+    min-width: 0;
+    font-size: 17px;
+  }
+
+  .notification-mark-all {
+    flex: 0 0 auto;
+    min-height: 34px;
+    padding: 0 6px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .notification-list {
+    max-height: none;
+    overflow: visible;
+    overflow-x: hidden;
+  }
+
+  .notification-item {
+    width: 100%;
+    max-width: 100%;
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr);
+    gap: 12px;
+    align-items: start;
+    padding: 14px 18px;
+    overflow-x: hidden;
+  }
+
+  .notification-type-icon {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+  }
+
+  .notification-copy {
+    min-width: 0;
+    padding-right: 0;
+  }
+
+  .notification-copy strong {
+    font-size: 14px;
+    font-weight: 700;
+    color: #0f172a;
+  }
+
+  .notification-copy span {
+    margin-top: 4px;
+    color: #64748b;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  .notification-copy time {
+    margin-top: 4px;
+    color: #94a3b8;
+    font-size: 12px;
+  }
+
+  .notification-item.unread::after {
+    right: 10px;
+    top: 18px;
+  }
+
+  .notification-empty {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 32px 24px;
+    text-align: center;
+  }
+
+  .notification-empty-message {
+    max-width: 300px;
+    margin: 8px auto 0;
+    white-space: normal;
+    overflow-wrap: break-word;
+    line-height: 1.5;
+  }
+
+  .notification-view-all {
+    width: 100%;
+    min-height: 44px;
+  }
+}
+
+/* Mobile sidebar footer: restore after older responsive rules hide sidebar footers. */
+.app-shell .mobile-sidebar-signout {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .app-shell .mobile-sidebar-footer {
+    display: block;
+    margin-top: auto;
+    padding: 16px 20px 20px;
+    border: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .app-shell .mobile-sidebar-footer p {
+    display: block;
+    margin: 0 0 4px;
+    color: rgba(255, 255, 255, 0.68);
+    font-size: 11px;
+    font-weight: 650;
+  }
+
+  .app-shell .mobile-sidebar-footer strong {
+    display: block;
+    color: #ffffff;
+    font-size: 14px;
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .app-shell .mobile-sidebar-footer .veyra-badge {
+    display: inline-flex;
+    margin-top: 8px;
+    background: rgba(201, 224, 252, 0.18);
+    color: #ffffff;
+  }
+
+  .app-shell .mobile-sidebar-signout {
+    width: 100%;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    cursor: pointer;
+    font-weight: 700;
+  }
+
+  .app-shell .mobile-sidebar-signout:hover,
+  .app-shell .mobile-sidebar-signout:focus-visible {
+    background: rgba(255, 255, 255, 0.16);
+    outline: none;
+  }
+
+  .app-shell .mobile-sidebar-signout svg {
+    width: 18px;
+    height: 18px;
   }
 }
