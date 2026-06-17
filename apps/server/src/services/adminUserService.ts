@@ -285,10 +285,10 @@ export async function createUserByAdmin(
       temporaryPassword,
       loginUrl,
     });
-  } catch (emailError) {
-    emailSent = false;
-    console.error("Failed to send Veyra onboarding email.", emailError);
-  }
+} catch (emailError) {
+  emailSent = false;
+  console.error("Failed to send Veyra onboarding email.", emailError);
+}
 
   await logActivity({
     actorUserId: adminUserId,
@@ -488,7 +488,7 @@ export async function resetUserPasswordByAdmin(
       loginUrl,
     });
   } catch (emailError) {
-    console.error("Failed to print Veyra development password reset email.", emailError);
+    console.error("Failed to send Veyra password reset email.", emailError);
   }
 
   await logActivity({

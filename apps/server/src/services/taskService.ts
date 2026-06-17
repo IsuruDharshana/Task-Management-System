@@ -2,6 +2,13 @@ import { supabaseAdmin } from "../config/supabaseAdmin.js";
 import type { AuthUser } from "../types/auth.js";
 import { AppError } from "../utils/appError.js";
 import { logActivity } from "./activityLogService.js";
+import {
+  broadcastTaskCreated,
+  broadcastTaskDeleted,
+  notifyTaskAssigned,
+  notifyTaskStatusChanged,
+  notifyTaskUpdated,
+} from "./realtimeEventService.js";
 
 type TaskPriority = "low" | "medium" | "high";
 type TaskStatus = "to_do" | "in_progress" | "completed";
@@ -642,6 +649,28 @@ export async function createTask(
     metadata: { projectId, projectName: project.name, taskId: task.id, taskTitle: task.title },
   });
 
+  await notifyTaskAssigned(
+    {
+      taskId: task.id,
+      taskTitle: task.title,
+      projectId,
+      projectName: project.name,
+      actorUserId: user.id,
+    },
+    assigneeIds,
+    { emitTaskUpdated: false }
+  );
+  await broadcastTaskCreated(
+    {
+      taskId: task.id,
+      taskTitle: task.title,
+      projectId,
+      projectName: project.name,
+      actorUserId: user.id,
+    },
+    assigneeIds
+  );
+
   return taskDto;
 }
 
@@ -738,9 +767,16 @@ export async function updateTask(taskId: string, input: UpdateTaskInput, user: A
   const updatedTask = data as TaskRow;
   const changedTitle = updatedTask.title !== task.title;
   const changedDescription = updatedTask.description !== task.description;
+  const statusChanged = updatedTask.status !== task.status;
+  const nonStatusChangedFields = [
+    ...(changedTitle ? ["title"] : []),
+    ...(changedDescription ? ["description"] : []),
+    ...(updatedTask.due_date !== task.due_date ? ["due_date"] : []),
+    ...(updatedTask.priority !== task.priority ? ["priority"] : []),
+  ];
   const project = await getActiveProject(task.project_id);
 
-  if (updatedTask.status !== task.status) {
+  if (statusChanged) {
     await logActivity({
       actorUserId: user.id,
       action: "task_status_changed",
@@ -810,6 +846,29 @@ export async function updateTask(taskId: string, input: UpdateTaskInput, user: A
     });
   }
 
+  if (statusChanged) {
+    await notifyTaskStatusChanged(
+      {
+        taskId: task.id,
+        taskTitle: updatedTask.title,
+        projectId: task.project_id,
+        projectName: project.name,
+        actorUserId: user.id,
+      },
+      task.status,
+      updatedTask.status
+    );
+  }
+
+  await notifyTaskUpdated({
+    taskId: task.id,
+    taskTitle: updatedTask.title,
+    projectId: task.project_id,
+    projectName: project.name,
+    actorUserId: user.id,
+    changedFields: nonStatusChangedFields,
+  });
+
   const [taskDto] = await mapTasksWithAssignees([updatedTask]);
   return taskDto;
 }
@@ -848,6 +907,14 @@ export async function deleteTask(taskId: string, input: DeleteTaskInput, user: A
     entityId: task.id,
     metadata: { projectId: task.project_id, projectName: project.name, taskId: task.id, taskTitle: task.title },
   });
+
+  await broadcastTaskDeleted({
+    taskId: task.id,
+    taskTitle: task.title,
+    projectId: task.project_id,
+    projectName: project.name,
+    actorUserId: user.id,
+  });
 }
 
 export async function addTaskAssignee(
@@ -882,6 +949,17 @@ export async function addTaskAssignee(
       assigneeName: assignee.userName,
     },
   });
+
+  await notifyTaskAssigned(
+    {
+      taskId: task.id,
+      taskTitle: task.title,
+      projectId: task.project_id,
+      projectName: project.name,
+      actorUserId: user.id,
+    },
+    [assignee.userId]
+  );
 
   return assignee;
 }

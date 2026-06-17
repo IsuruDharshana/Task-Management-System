@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { api, APIError } from "../services/api";
 import type { ActivityLog, User } from "../services/api";
+import { Badge, Button, EmptyState, LoadingState, UserAvatar } from "./ui";
 
 interface ActivityLogSectionProps {
   currentUser: User;
+  mode?: "audit" | "notifications";
 }
 
 const ADMIN_ENTITY_TYPES = ["user", "system", "account"];
@@ -136,13 +138,14 @@ function getDetail(log: ActivityLog) {
   return details.length > 0 ? details.join(" • ") : "No additional details";
 }
 
-export default function ActivityLogSection({ currentUser }: ActivityLogSectionProps) {
+export default function ActivityLogSection({ currentUser, mode }: ActivityLogSectionProps) {
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [entityType, setEntityType] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const title = currentUser.role === "admin" ? "Audit Log" : "Activity Log";
+  const isAuditMode = mode ? mode === "audit" : currentUser.role === "admin";
+  const title = isAuditMode ? "Audit Log" : "Notifications";
   const entityTypes = currentUser.role === "admin" ? ADMIN_ENTITY_TYPES : PROJECT_ENTITY_TYPES;
 
   const loadLogs = async () => {
@@ -167,16 +170,23 @@ export default function ActivityLogSection({ currentUser }: ActivityLogSectionPr
   }, []);
 
   return (
-    <section className="task-section">
+    <section className="task-section activity-page veyra-page">
+      <div className="modern-page-header">
+        <div>
+          <h1>{title}</h1>
+          <p className="subtitle">Review recent account, notification, and workspace activity.</p>
+        </div>
+        <Button type="button" variant="secondary" onClick={loadLogs} disabled={loading}>
+          {loading ? "Refreshing..." : "Refresh"}
+        </Button>
+      </div>
+
       <div className="card task-panel">
         <div className="task-section-header">
           <div>
-            <h2>{title}</h2>
-            <p className="card-desc">Review recent account and workspace activity.</p>
+            <h2>{isAuditMode ? "Activity Feed" : "Notification Feed"}</h2>
+            <p className="card-desc">Human-readable changes from projects, tasks, comments, attachments, and user access.</p>
           </div>
-          <button className="btn btn-secondary btn-sm" onClick={loadLogs} disabled={loading}>
-            {loading ? <span className="spinner"></span> : "Refresh"}
-          </button>
         </div>
 
         {error && (
@@ -205,41 +215,24 @@ export default function ActivityLogSection({ currentUser }: ActivityLogSectionPr
         </div>
 
         {loading ? (
-          <div className="loading-state">
-            <span className="spinner big"></span>
-            <p>Loading activity...</p>
-          </div>
+          <LoadingState label="Loading activity..." />
         ) : logs.length === 0 ? (
-          <div className="empty-state">
-            <h3>No activity found</h3>
-            <p className="subtitle">Recent audit records will appear here.</p>
-          </div>
+          <EmptyState title="No activity found" description="Recent audit records and notification activity will appear here." />
         ) : (
-          <div className="table-responsive">
-            <table className="users-table">
-              <thead>
-                <tr>
-                  <th>Activity</th>
-                  <th>Actor</th>
-                  <th>Entity</th>
-                  <th>Details</th>
-                  <th>Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                {logs.map((log) => (
-                  <tr key={log.id}>
-                    <td>{buildMessage(log)}</td>
-                    <td>{log.actorName || "System"}</td>
-                    <td>
-                      <span className="badge badge-secondary">{statusLabel(log.entityType)}</span>
-                    </td>
-                    <td>{getDetail(log)}</td>
-                    <td>{formatDateTime(log.createdAt)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="activity-feed-list">
+            {logs.map((log) => (
+              <article key={log.id} className="activity-feed-item">
+                <UserAvatar name={log.actorName || "System"} />
+                <div>
+                  <div className="activity-feed-title">
+                    <strong>{buildMessage(log)}</strong>
+                    <Badge variant="default">{statusLabel(log.entityType)}</Badge>
+                  </div>
+                  <p>{getDetail(log)}</p>
+                  <time>{formatDateTime(log.createdAt)} · {log.actorName || "System"}</time>
+                </div>
+              </article>
+            ))}
           </div>
         )}
       </div>

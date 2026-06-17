@@ -3,6 +3,7 @@ import type { AuthUser } from "../types/auth.js";
 import { AppError } from "../utils/appError.js";
 import { validateUuid } from "./taskService.js";
 import { logActivity } from "./activityLogService.js";
+import { notifyCommentAdded } from "./realtimeEventService.js";
 
 interface TaskRow {
   id: string;
@@ -264,6 +265,16 @@ export async function createTaskComment(
       taskTitle: task.title,
       commentId: comment.id,
     },
+  });
+
+  await notifyCommentAdded({
+    taskId: task.id,
+    taskTitle: task.title,
+    projectId: task.project_id,
+    projectName: project.name,
+    commentId: comment.id,
+    actorUserId: user.id,
+    actorName: user.name,
   });
 
   return comment;
