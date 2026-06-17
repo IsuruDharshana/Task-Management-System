@@ -11,9 +11,9 @@ import AdminPanel from "./components/AdminPanel";
 import ActivityLogSection from "./components/ActivityLogSection";
 import FirstLoginPasswordResetPage from "./components/FirstLoginPasswordResetPage";
 import SettingsPage from "./components/SettingsPage";
-import NotificationBell from "./components/NotificationBell";
 import { SocketProvider } from "./context/SocketContext";
 import { NotificationProvider } from "./context/NotificationContext";
+import { AppLayout, ErrorState, LoadingState } from "./components/ui";
 import "./App.css";
 
 function getHomePath(user: User): string {
@@ -75,6 +75,7 @@ function AppContent() {
   const matchProjectDetails = useRouteMatch("/projects/:projectId");
   const matchAdmin = useRouteMatch("/admin");
   const matchActivityLog = useRouteMatch("/activity-log");
+  const matchNotifications = useRouteMatch("/notifications");
   const matchSettings = useRouteMatch("/settings");
 
   // Redirect to correct dashboard based on role on default root path '/'
@@ -85,12 +86,7 @@ function AppContent() {
   }, [authChecked, currentUser, path]);
 
   if (loading) {
-    return (
-      <div className="app-loader">
-        <div className="spinner big"></div>
-        <p>Loading Veyra Workspace...</p>
-      </div>
-    );
+    return <LoadingState fullPage label="Loading Veyra Workspace..." />;
   }
 
   // Not authenticated? Show login screen
@@ -141,9 +137,7 @@ function AppContent() {
       if (currentUser.role !== "admin") {
         return (
           <div className="unauthorized-container card">
-            <span className="unauthorized-icon">!</span>
-            <h2>Access Denied</h2>
-            <p>You do not have administrative privileges to access this page.</p>
+            <ErrorState title="Access Denied" message="You do not have administrative privileges to access this page." />
           </div>
         );
       }
@@ -151,7 +145,11 @@ function AppContent() {
     }
 
     if (matchActivityLog.matches) {
-      return <ActivityLogSection currentUser={currentUser} />;
+      return <ActivityLogSection currentUser={currentUser} mode="audit" />;
+    }
+
+    if (matchNotifications.matches) {
+      return <ActivityLogSection currentUser={currentUser} mode="notifications" />;
     }
 
     if (matchSettings.matches) {
@@ -161,90 +159,27 @@ function AppContent() {
     // fallback 404
     return (
       <div className="not-found-container card">
-        <span className="not-found-icon">?</span>
-        <h2>Page Not Found</h2>
-        <p>The page you are looking for does not exist or has been moved.</p>
-        <button onClick={() => navigate("/")} className="btn btn-primary" style={{ marginTop: "16px" }}>
-          Go to Dashboard
-        </button>
+        <ErrorState
+          title="Page Not Found"
+          message="The page you are looking for does not exist or has been moved."
+          actionLabel="Go to Dashboard"
+          onAction={() => navigate("/")}
+        />
       </div>
     );
   };
 
-  const isUserAdmin = currentUser.role === "admin";
-
   return (
     <SocketProvider user={currentUser}>
       <NotificationProvider user={currentUser}>
-        <div className="app-shell">
-      {/* Top Navbar */}
-      <header className="app-navbar">
-        <div className="nav-brand" onClick={() => navigate("/")}>
-          <span className="logo-icon">V</span>
-          <span className="logo-text">VEYRA</span>
-        </div>
-
-        <nav className="nav-links">
-          {!isUserAdmin && (
-            <>
-              <button
-                onClick={() => navigate("/dashboard")}
-                className={`nav-item ${path === "/dashboard" ? "active" : ""}`}
-              >
-                Dashboard
-              </button>
-              <button
-                onClick={() => navigate("/projects")}
-                className={`nav-item ${path.startsWith("/projects") ? "active" : ""}`}
-              >
-                Projects
-              </button>
-            </>
-          )}
-          {isUserAdmin && (
-            <button
-              onClick={() => navigate("/admin")}
-              className={`nav-item ${path === "/admin" ? "active" : ""}`}
-            >
-              Admin Workspace
-            </button>
-          )}
-          <button
-            onClick={() => navigate("/activity-log")}
-            className={`nav-item ${path === "/activity-log" ? "active" : ""}`}
-          >
-            {isUserAdmin ? "Audit Log" : "Activity Log"}
-          </button>
-          <button
-            onClick={() => navigate("/settings")}
-            className={`nav-item ${path === "/settings" ? "active" : ""}`}
-          >
-            Settings
-          </button>
-        </nav>
-
-        <div className="nav-profile">
-          <NotificationBell />
-          <div className="profile-details">
-            <span className="profile-name">{currentUser.name}</span>
-            <span className="profile-role badge">{currentUser.role}</span>
-          </div>
-          <button onClick={handleLogout} className="btn btn-secondary btn-sm">
-            Sign Out
-          </button>
-        </div>
-      </header>
-
-      {/* Main Content Area */}
-      <main className="app-main-content">
-        {renderRoute()}
-      </main>
-
-      {/* Footer */}
-      <footer className="app-footer">
-        <p>&copy; {new Date().getFullYear()} Veyra Task Management System. All rights reserved.</p>
-      </footer>
-        </div>
+        <AppLayout
+          currentUser={currentUser}
+          path={path}
+          onNavigate={navigate}
+          onLogout={handleLogout}
+        >
+          {renderRoute()}
+        </AppLayout>
       </NotificationProvider>
     </SocketProvider>
   );

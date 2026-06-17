@@ -1,12 +1,32 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { api, APIError } from "../services/api";
 import type { AdminUser } from "../services/api";
+import { Badge, Button, ConfirmDialog, EmptyState, Input, LoadingState, Select, UserAvatar } from "./ui";
 
 type EditableRole = "project_manager" | "collaborator";
+type RoleFilter = "all" | "admin" | "project_manager" | "collaborator";
+type StatusFilter = "all" | "active" | "inactive";
+type PasswordFilter = "all" | "required" | "not_required";
 type ConfirmAction =
   | { type: "deactivate"; user: AdminUser }
   | { type: "reactivate"; user: AdminUser }
   | { type: "reset-password"; user: AdminUser };
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof APIError) return error.message;
+  if (error instanceof Error) return error.message;
+  return fallback;
+}
+
+function formatDate(value?: string | null): string {
+  if (!value) return "Not available";
+  return new Date(value).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+}
+
+function formatDateTime(value?: string | null): string {
+  if (!value) return "Never";
+  return new Date(value).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+}
 
 export default function AdminPanel() {
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -15,17 +35,19 @@ export default function AdminPanel() {
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  // Form state
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [passwordFilter, setPasswordFilter] = useState<PasswordFilter>("all");
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<EditableRole>("project_manager");
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
-  
-  // Successful creation payload
+  const [showCreateForm, setShowCreateForm] = useState(false);
   const [createdUserPayload, setCreatedUserPayload] = useState<{ user: AdminUser } | null>(null);
 
-  // Edit/action modal state
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
   const [editName, setEditName] = useState("");
   const [editEmail, setEditEmail] = useState("");
@@ -35,20 +57,14 @@ export default function AdminPanel() {
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
   const [confirmingAction, setConfirmingAction] = useState(false);
 
-  const updateUserInList = (updatedUser: AdminUser) => {
-    setUsers((currentUsers) =>
-      currentUsers.map((user) => (user.id === updatedUser.id ? updatedUser : user))
-    );
-  };
-
   const fetchUsers = async () => {
     try {
       setLoading(true);
       setError(null);
       const data = await api.admin.listUsers();
       setUsers(data.users || []);
-    } catch (err: any) {
-      setError(err.message || "Failed to load users list.");
+    } catch (err) {
+      setError(getErrorMessage(err, "Failed to load users list."));
     } finally {
       setLoading(false);
     }
@@ -58,8 +74,44 @@ export default function AdminPanel() {
     fetchUsers();
   }, []);
 
-  const handleCreateUser = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const filteredUsers = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return users.filter((user) => {
+      const matchesSearch = !query || user.name.toLowerCase().includes(query) || user.email.toLowerCase().includes(query);
+      const matchesRole = roleFilter === "all" || user.role === roleFilter;
+      const matchesStatus = statusFilter === "all" || (statusFilter === "active" ? user.isActive : !user.isActive);
+      const matchesPassword =
+        passwordFilter === "all" ||
+        (passwordFilter === "required" ? user.mustResetPassword : !user.mustResetPassword);
+      return matchesSearch && matchesRole && matchesStatus && matchesPassword;
+    });
+  }, [passwordFilter, roleFilter, search, statusFilter, users]);
+
+  const metrics = useMemo(() => {
+    const totalUsers = users.length;
+    const activeUsers = users.filter((user) => user.isActive).length;
+    const inactiveUsers = users.filter((user) => !user.isActive).length;
+    const pendingPasswordResets = users.filter((user) => user.mustResetPassword).length;
+    const roleDistribution = {
+      admin: users.filter((user) => user.role === "admin").length,
+      project_manager: users.filter((user) => user.role === "project_manager").length,
+      collaborator: users.filter((user) => user.role === "collaborator").length,
+    };
+
+    return { totalUsers, activeUsers, inactiveUsers, pendingPasswordResets, roleDistribution };
+  }, [users]);
+
+  const usersRequiringAttention = users.filter((user) => !user.isActive || user.mustResetPassword).slice(0, 5);
+  const recentUserActivity = [...users]
+    .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0).getTime() - new Date(a.updatedAt || a.createdAt || 0).getTime())
+    .slice(0, 5);
+
+  const updateUserInList = (updatedUser: AdminUser) => {
+    setUsers((currentUsers) => currentUsers.map((user) => (user.id === updatedUser.id ? updatedUser : user)));
+  };
+
+  const handleCreateUser = async (event: React.FormEvent) => {
+    event.preventDefault();
     setCreateError(null);
     setCreatedUserPayload(null);
     setActionMessage(null);
@@ -67,18 +119,15 @@ export default function AdminPanel() {
     setCreating(true);
 
     try {
-      const result = await api.admin.createUser({ name, email, role });
+      const result = await api.admin.createUser({ name: name.trim(), email: email.trim(), role });
       setCreatedUserPayload(result);
       setName("");
       setEmail("");
       setRole("project_manager");
-      fetchUsers(); // Refresh user list
-    } catch (err: any) {
-      if (err instanceof APIError) {
-        setCreateError(err.message);
-      } else {
-        setCreateError("Failed to create user.");
-      }
+      setShowCreateForm(false);
+      await fetchUsers();
+    } catch (err) {
+      setCreateError(getErrorMessage(err, "Failed to create user."));
     } finally {
       setCreating(false);
     }
@@ -99,23 +148,13 @@ export default function AdminPanel() {
     setActionError(null);
   };
 
-  const handleSaveEdit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSaveEdit = async (event: React.FormEvent) => {
+    event.preventDefault();
     if (!editingUser) return;
 
     setEditError(null);
-
-    if (!editName.trim()) {
-      setEditError("Name is required.");
-      return;
-    }
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editEmail.trim())) {
-      setEditError("Enter a valid email address.");
-      return;
-    }
-
     setSavingEdit(true);
+
     try {
       const result = await api.admin.updateUser(editingUser.id, {
         name: editName.trim(),
@@ -126,12 +165,8 @@ export default function AdminPanel() {
       updateUserInList(result.user);
       setEditingUser(null);
       setActionMessage("User updated successfully.");
-    } catch (err: any) {
-      if (err instanceof APIError) {
-        setEditError(err.message);
-      } else {
-        setEditError("Failed to update user.");
-      }
+    } catch (err) {
+      setEditError(getErrorMessage(err, "Failed to update user."));
     } finally {
       setSavingEdit(false);
     }
@@ -164,28 +199,10 @@ export default function AdminPanel() {
       }
 
       setConfirmAction(null);
-    } catch (err: any) {
-      if (err instanceof APIError) {
-        setActionError(err.message);
-      } else {
-        setActionError("Action failed. Please try again.");
-      }
+    } catch (err) {
+      setActionError(getErrorMessage(err, "Action failed. Please try again."));
     } finally {
       setConfirmingAction(false);
-    }
-  };
-
-  const formatDate = (dateValue?: string | null) => {
-    if (!dateValue) return "Not available";
-
-    try {
-      return new Date(dateValue).toLocaleDateString(undefined, {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      });
-    } catch (err) {
-      return dateValue;
     }
   };
 
@@ -207,198 +224,256 @@ export default function AdminPanel() {
     return `This will generate a new temporary password for ${confirmAction.user.name}. They must change it on next login.`;
   };
 
+  const renderUserActions = (user: AdminUser) => (
+    <div className="admin-row-actions">
+      <Button type="button" variant="secondary" className="btn-xs" onClick={() => handleStartEdit(user)} disabled={user.role === "admin"}>
+        Edit
+      </Button>
+      <Button type="button" variant="secondary" className="btn-xs" onClick={() => setConfirmAction({ type: "reset-password", user })}>
+        Reset
+      </Button>
+      <Button
+        type="button"
+        variant={user.isActive ? "danger" : "secondary"}
+        className="btn-xs"
+        onClick={() => setConfirmAction({ type: user.isActive ? "deactivate" : "reactivate", user })}
+      >
+        {user.isActive ? "Deactivate" : "Reactivate"}
+      </Button>
+    </div>
+  );
+
   return (
-    <div className="admin-panel">
-      <div className="admin-header-section">
-        <h1>Admin Control Workspace</h1>
-        <p className="subtitle">
-          Manage system users and create roles for Project Management testing.
-        </p>
+    <div className="admin-panel veyra-page">
+      <div className="modern-page-header">
+        <div>
+          <h1>Admin Dashboard</h1>
+          <p className="subtitle">Monitor user access and account attention across Veyra.</p>
+        </div>
+        <div className="header-actions">
+          <Button type="button" variant="secondary" onClick={fetchUsers} disabled={loading}>
+            {loading ? "Refreshing..." : "Refresh"}
+          </Button>
+          <Button type="button" onClick={() => setShowCreateForm((current) => !current)}>
+            Create New User
+          </Button>
+        </div>
       </div>
 
-      <div className="admin-grid">
-        {/* Left Column: Create User Form */}
-        <div className="card admin-form-card">
-          <h2>Create New User</h2>
-          <p className="card-desc">
-            Add a new user with either a Project Manager or Collaborator role.
-          </p>
+      <div className="admin-dashboard-grid">
+        {[
+          ["Total Users", metrics.totalUsers],
+          ["Active Users", metrics.activeUsers],
+          ["Inactive Users", metrics.inactiveUsers],
+          ["Pending Password Resets", metrics.pendingPasswordResets],
+        ].map(([label, value]) => (
+          <article key={label} className="card modern-metric-card">
+            <span className="dashboard-card-label">{label}</span>
+            <strong className="dashboard-card-value">{value}</strong>
+            <span className="dashboard-card-helper">Derived from registered users</span>
+          </article>
+        ))}
+      </div>
 
-          <form onSubmit={handleCreateUser} className="admin-form">
-            {createError && (
-              <div className="alert alert-danger">
-                <span className="alert-icon">!</span>
-                <span className="alert-message">{createError}</span>
-              </div>
+      <div className="admin-insight-grid">
+        <section className="card">
+          <h2>Recent User Activity</h2>
+          <div className="activity-mini-list">
+            {recentUserActivity.length === 0 ? (
+              <p className="muted-text">No user activity available.</p>
+            ) : (
+              recentUserActivity.map((user) => (
+                <article key={user.id}>
+                  <UserAvatar name={user.name} size="sm" />
+                  <div>
+                    <strong>{user.name}</strong>
+                    <span>Updated {formatDateTime(user.updatedAt || user.createdAt)}</span>
+                  </div>
+                </article>
+              ))
             )}
+          </div>
+        </section>
 
-            <div className="form-group">
-              <label htmlFor="user-name">Full Name</label>
-              <input
-                id="user-name"
-                type="text"
-                placeholder="Jane Doe"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                disabled={creating}
-              />
-            </div>
+        <section className="card">
+          <h2>Users Requiring Attention</h2>
+          <div className="attention-list">
+            {usersRequiringAttention.length === 0 ? (
+              <p className="muted-text">No users currently require attention.</p>
+            ) : (
+              usersRequiringAttention.map((user) => (
+                <article key={user.id}>
+                  <div>
+                    <strong>{user.name}</strong>
+                    <span>{user.email}</span>
+                  </div>
+                  <div className="attention-badges">
+                    {!user.isActive && <Badge variant="inactive">Inactive</Badge>}
+                    {user.mustResetPassword && <Badge variant="overdue">Reset required</Badge>}
+                  </div>
+                </article>
+              ))
+            )}
+          </div>
+        </section>
 
-            <div className="form-group">
-              <label htmlFor="user-email">Email Address</label>
-              <input
-                id="user-email"
-                type="email"
-                placeholder="jane@veyra.local"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                disabled={creating}
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="user-role">System Role</label>
-              <select
-                id="user-role"
-                value={role}
-                onChange={(e) => setRole(e.target.value as any)}
-                required
-                disabled={creating}
-              >
-                <option value="project_manager">Project Manager (Can create projects)</option>
-                <option value="collaborator">Collaborator (Can view assigned projects)</option>
-              </select>
-            </div>
-
-            <button type="submit" className="btn btn-primary btn-block" disabled={creating}>
-              {creating ? <span className="spinner"></span> : "Create User"}
-            </button>
-          </form>
-
-          {createdUserPayload && (
-            <div className="alert alert-success created-credentials-box">
-              <h3>User Created Successfully!</h3>
-              <p>User created successfully. Onboarding details were sent through the configured email channel.</p>
-              
-              <div className="credential-row">
-                <strong>Email:</strong> <code>{createdUserPayload.user.email}</code>
+        <section className="card">
+          <h2>Role Distribution</h2>
+          <div className="role-distribution">
+            {Object.entries(metrics.roleDistribution).map(([roleName, count]) => (
+              <div key={roleName}>
+                <span>{roleName.replace("_", " ")}</span>
+                <strong>{count}</strong>
               </div>
-              <div className="credential-row">
-                <strong>Role:</strong> <span className="badge badge-accent">{createdUserPayload.user.role}</span>
-              </div>
-              
-              <button 
-                className="btn btn-secondary btn-sm"
-                onClick={() => setCreatedUserPayload(null)}
-              >
-                Dismiss
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Right Column: Users List */}
-        <div className="card admin-list-card">
-          <h2>Registered Users</h2>
-          <p className="card-desc">Users in the system and their current account status.</p>
-
-          {actionError && (
-            <div className="alert alert-danger">
-              <span className="alert-icon">!</span>
-              <span className="alert-message">{actionError}</span>
-            </div>
-          )}
-          {actionMessage && (
-            <div className="alert alert-success">
-              <span className="alert-icon">!</span>
-              <span className="alert-message">{actionMessage}</span>
-            </div>
-          )}
-
-          {loading ? (
-            <div className="loading-state">
-              <div className="spinner big"></div>
-              <p>Loading users...</p>
-            </div>
-          ) : error ? (
-            <div className="error-state">
-              <p className="error-msg">{error}</p>
-              <button className="btn btn-secondary" onClick={fetchUsers}>
-                Retry
-              </button>
-            </div>
-          ) : users.length === 0 ? (
-            <div className="empty-state">
-              <p>No registered users found.</p>
-            </div>
-          ) : (
-            <div className="table-responsive">
-              <table className="users-table">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Role</th>
-                    <th>Status</th>
-                    <th>Password Reset</th>
-                    <th>Created</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map((u) => (
-                    <tr key={u.id}>
-                      <td className="font-semibold">{u.name}</td>
-                      <td>{u.email}</td>
-                      <td>
-                        <span className={`badge ${u.role === "admin" ? "badge-danger" : u.role === "project_manager" ? "badge-primary" : "badge-secondary"}`}>
-                          {u.role}
-                        </span>
-                      </td>
-                      <td>
-                        <span className={`status-dot ${u.isActive ? "active" : "inactive"}`}></span>
-                        {u.isActive ? "Active" : "Inactive"}
-                      </td>
-                      <td>
-                        <span className={`badge ${u.mustResetPassword ? "badge-danger" : "badge-secondary"}`}>
-                          {u.mustResetPassword ? "Required" : "Not required"}
-                        </span>
-                      </td>
-                      <td>{formatDate(u.createdAt)}</td>
-                      <td>
-                        <div className="admin-row-actions">
-                          <button
-                            className="btn btn-secondary btn-xs"
-                            onClick={() => handleStartEdit(u)}
-                            disabled={u.role === "admin"}
-                            title={u.role === "admin" ? "Admin users cannot be edited here" : "Edit user"}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            className={`btn btn-xs ${u.isActive ? "btn-danger" : "btn-secondary"}`}
-                            onClick={() => setConfirmAction({ type: u.isActive ? "deactivate" : "reactivate", user: u })}
-                          >
-                            {u.isActive ? "Deactivate" : "Reactivate"}
-                          </button>
-                          <button
-                            className="btn btn-secondary btn-xs"
-                            onClick={() => setConfirmAction({ type: "reset-password", user: u })}
-                          >
-                            Reset Password
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+            ))}
+          </div>
+        </section>
       </div>
+
+      {showCreateForm && (
+        <section className="card admin-create-panel">
+          <div className="section-heading-row">
+            <div>
+              <h2>Create New User</h2>
+              <p className="card-desc">Add a project manager or collaborator. Temporary credentials are sent through the configured email channel.</p>
+            </div>
+          </div>
+          <form onSubmit={handleCreateUser} className="admin-create-form">
+            {createError && <div className="alert alert-danger">{createError}</div>}
+            <Input id="user-name" label="Full Name" value={name} onChange={(event) => setName(event.target.value)} required disabled={creating} />
+            <Input id="user-email" type="email" label="Email Address" value={email} onChange={(event) => setEmail(event.target.value)} required disabled={creating} />
+            <Select id="user-role" label="System Role" value={role} onChange={(event) => setRole(event.target.value as EditableRole)} disabled={creating}>
+              <option value="project_manager">Project Manager</option>
+              <option value="collaborator">Collaborator</option>
+            </Select>
+            <div className="form-actions">
+              <Button type="button" variant="secondary" onClick={() => setShowCreateForm(false)} disabled={creating}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={creating}>
+                {creating ? "Creating..." : "Create User"}
+              </Button>
+            </div>
+          </form>
+        </section>
+      )}
+
+      {createdUserPayload && (
+        <div className="alert alert-success">
+          User created successfully for {createdUserPayload.user.email}. Onboarding details were sent through the configured email channel.
+          <Button type="button" variant="ghost" onClick={() => setCreatedUserPayload(null)}>Dismiss</Button>
+        </div>
+      )}
+
+      <section className="card admin-users-card">
+        <div className="section-heading-row">
+          <div>
+            <h1>User Management</h1>
+            <p className="subtitle">Create, update, activate, deactivate, and manage user access.</p>
+          </div>
+        </div>
+
+        {actionError && <div className="alert alert-danger">{actionError}</div>}
+        {actionMessage && <div className="alert alert-success">{actionMessage}</div>}
+
+        <div className="admin-user-toolbar">
+          <Input id="admin-user-search" type="search" label="Search users" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by name or email" />
+          <Select id="admin-role-filter" label="Role" value={roleFilter} onChange={(event) => setRoleFilter(event.target.value as RoleFilter)}>
+            <option value="all">All roles</option>
+            <option value="admin">Admin</option>
+            <option value="project_manager">Project Manager</option>
+            <option value="collaborator">Collaborator</option>
+          </Select>
+          <Select id="admin-status-filter" label="Status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}>
+            <option value="all">All statuses</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </Select>
+          <Select id="admin-password-filter" label="Password State" value={passwordFilter} onChange={(event) => setPasswordFilter(event.target.value as PasswordFilter)}>
+            <option value="all">All states</option>
+            <option value="required">Reset required</option>
+            <option value="not_required">Current</option>
+          </Select>
+        </div>
+
+        {loading ? (
+          <LoadingState label="Loading users..." />
+        ) : error ? (
+          <div className="error-state">
+            <p className="error-msg">{error}</p>
+            <Button type="button" variant="secondary" onClick={fetchUsers}>Retry</Button>
+          </div>
+        ) : filteredUsers.length === 0 ? (
+          <EmptyState title="No users found" description="Adjust filters or create a new user." />
+        ) : (
+          <>
+          <div className="table-responsive">
+            <table className="users-table modern-users-table">
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Status</th>
+                  <th>Password State</th>
+                  <th>Last Login</th>
+                  <th>Created Date</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredUsers.map((user) => (
+                  <tr key={user.id}>
+                    <td>
+                      <div className="user-cell">
+                        <UserAvatar name={user.name} />
+                        <div>
+                          <strong>{user.name}</strong>
+                          <span>{user.id.slice(0, 8)}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td>{user.email}</td>
+                    <td><Badge variant={user.role}>{user.role.replace("_", " ")}</Badge></td>
+                    <td><Badge variant={user.isActive ? "active" : "inactive"}>{user.isActive ? "Active" : "Inactive"}</Badge></td>
+                    <td><Badge variant={user.mustResetPassword ? "overdue" : "completed"}>{user.mustResetPassword ? "Reset required" : "Current"}</Badge></td>
+                    <td>{formatDateTime(user.lastLoginAt)}</td>
+                    <td>{formatDate(user.createdAt)}</td>
+                    <td>
+                      {renderUserActions(user)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="mobile-user-card-list">
+            {filteredUsers.map((user) => (
+              <article key={user.id} className="mobile-user-card">
+                <div className="mobile-user-card-header">
+                  <UserAvatar name={user.name} />
+                  <div>
+                    <strong>{user.name}</strong>
+                    <span>{user.email}</span>
+                  </div>
+                </div>
+                <div className="mobile-user-badges">
+                  <Badge variant={user.role}>{user.role.replace("_", " ")}</Badge>
+                  <Badge variant={user.isActive ? "active" : "inactive"}>{user.isActive ? "Active" : "Inactive"}</Badge>
+                  <Badge variant={user.mustResetPassword ? "overdue" : "completed"}>{user.mustResetPassword ? "Reset required" : "Current"}</Badge>
+                </div>
+                <dl className="mobile-user-meta">
+                  <div><dt>Last login</dt><dd>{formatDateTime(user.lastLoginAt)}</dd></div>
+                  <div><dt>Created</dt><dd>{formatDate(user.createdAt)}</dd></div>
+                  <div><dt>User ID</dt><dd>{user.id.slice(0, 8)}</dd></div>
+                </dl>
+                {renderUserActions(user)}
+              </article>
+            ))}
+          </div>
+          </>
+        )}
+      </section>
 
       {editingUser && (
         <div className="modal-backdrop" role="presentation">
@@ -407,96 +482,38 @@ export default function AdminPanel() {
             <p className="card-desc">Update account details for {editingUser.name}.</p>
 
             <form onSubmit={handleSaveEdit}>
-              {editError && (
-                <div className="alert alert-danger">
-                  <span className="alert-icon">!</span>
-                  <span className="alert-message">{editError}</span>
-                </div>
-              )}
-
-              <div className="form-group">
-                <label htmlFor="edit-user-name">Full Name</label>
-                <input
-                  id="edit-user-name"
-                  type="text"
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  required
-                  disabled={savingEdit}
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="edit-user-email">Email Address</label>
-                <input
-                  id="edit-user-email"
-                  type="email"
-                  value={editEmail}
-                  onChange={(e) => setEditEmail(e.target.value)}
-                  required
-                  disabled={savingEdit}
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="edit-user-role">System Role</label>
-                <select
-                  id="edit-user-role"
-                  value={editRole}
-                  onChange={(e) => setEditRole(e.target.value as EditableRole)}
-                  required
-                  disabled={savingEdit}
-                >
-                  <option value="project_manager">Project Manager</option>
-                  <option value="collaborator">Collaborator</option>
-                </select>
-              </div>
-
+              {editError && <div className="alert alert-danger">{editError}</div>}
+              <Input id="edit-user-name" label="Full Name" value={editName} onChange={(event) => setEditName(event.target.value)} required disabled={savingEdit} />
+              <Input id="edit-user-email" type="email" label="Email Address" value={editEmail} onChange={(event) => setEditEmail(event.target.value)} required disabled={savingEdit} />
+              <Select id="edit-user-role" label="System Role" value={editRole} onChange={(event) => setEditRole(event.target.value as EditableRole)} disabled={savingEdit}>
+                <option value="project_manager">Project Manager</option>
+                <option value="collaborator">Collaborator</option>
+              </Select>
               <div className="form-actions">
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => setEditingUser(null)}
-                  disabled={savingEdit}
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary" disabled={savingEdit}>
-                  {savingEdit ? "Saving..." : "Save Changes"}
-                </button>
+                <Button type="button" variant="secondary" onClick={() => setEditingUser(null)} disabled={savingEdit}>Cancel</Button>
+                <Button type="submit" disabled={savingEdit}>{savingEdit ? "Saving..." : "Save Changes"}</Button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {confirmAction && (
-        <div className="modal-backdrop" role="presentation">
-          <div className="modal-card modal-card-sm" role="dialog" aria-modal="true" aria-labelledby="confirm-action-title">
-            <h2 id="confirm-action-title">{getConfirmTitle()}</h2>
-            <p className="card-desc">{getConfirmMessage()}</p>
-
-            <div className="form-actions">
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => setConfirmAction(null)}
-                disabled={confirmingAction}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className={confirmAction.type === "deactivate" ? "btn btn-danger" : "btn btn-primary"}
-                onClick={handleConfirmAction}
-                disabled={confirmingAction}
-              >
-                {confirmingAction ? "Working..." : "Confirm"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={Boolean(confirmAction)}
+        title={getConfirmTitle()}
+        description={getConfirmMessage()}
+        confirmLabel={
+          confirmAction?.type === "deactivate"
+            ? "Deactivate"
+            : confirmAction?.type === "reactivate"
+              ? "Reactivate"
+              : "Reset Password"
+        }
+        variant={confirmAction?.type === "deactivate" ? "danger" : "default"}
+        isLoading={confirmingAction}
+        onCancel={() => setConfirmAction(null)}
+        onConfirm={handleConfirmAction}
+      />
     </div>
   );
 }
