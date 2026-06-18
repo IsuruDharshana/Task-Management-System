@@ -3,7 +3,7 @@ import { api } from "../services/api";
 import type { Member, Project, Task, User } from "../services/api";
 import { useRouter } from "./Router";
 import { useSocket } from "../context/SocketContext";
-import { Badge, Button, EmptyState, Input, LoadingState, UserAvatar } from "./ui";
+import { Badge, Button, EmptyState, Input, SkeletonProjectGrid, UserAvatar } from "./ui";
 
 interface ProjectsListProps {
   currentUser: User;
@@ -139,7 +139,7 @@ export default function ProjectsList({ currentUser }: ProjectsListProps) {
       </div>
 
       {loading ? (
-        <LoadingState label="Loading projects..." />
+        <SkeletonProjectGrid />
       ) : error ? (
         <div className="error-state card">
           <p className="error-msg">{error}</p>

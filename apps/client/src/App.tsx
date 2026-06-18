@@ -13,7 +13,7 @@ import FirstLoginPasswordResetPage from "./components/FirstLoginPasswordResetPag
 import SettingsPage from "./components/SettingsPage";
 import { SocketProvider } from "./context/SocketContext";
 import { NotificationProvider } from "./context/NotificationContext";
-import { AppLayout, ErrorState, LoadingState } from "./components/ui";
+import { AppLayout, ErrorState, SkeletonAppShell } from "./components/ui";
 import "./App.css";
 
 function getHomePath(user: User): string {
@@ -86,7 +86,7 @@ function AppContent() {
   }, [authChecked, currentUser, path]);
 
   if (loading) {
-    return <LoadingState fullPage label="Loading Veyra Workspace..." />;
+    return <SkeletonAppShell />;
   }
 
   // Not authenticated? Show login screen
@@ -109,10 +109,7 @@ function AppContent() {
     if (path === "/" || path === "") {
       // Default placeholder loading/redirect page
       return (
-        <div className="loading-state">
-          <div className="spinner"></div>
-          <p>Redirecting to your workspace...</p>
-        </div>
+        <SkeletonAppShell />
       );
     }
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api, APIError } from "../services/api";
 import type { AdminUser } from "../services/api";
-import { Badge, Button, ConfirmDialog, EmptyState, Input, LoadingState, Select, UserAvatar } from "./ui";
+import { Badge, Button, ConfirmDialog, EmptyState, Input, Select, SkeletonTable, UserAvatar } from "./ui";
 
 type EditableRole = "project_manager" | "collaborator";
 type RoleFilter = "all" | "admin" | "project_manager" | "collaborator";
@@ -397,7 +397,7 @@ export default function AdminPanel() {
         </div>
 
         {loading ? (
-          <LoadingState label="Loading users..." />
+          <SkeletonTable rows={7} columns={8} />
         ) : error ? (
           <div className="error-state">
             <p className="error-msg">{error}</p>

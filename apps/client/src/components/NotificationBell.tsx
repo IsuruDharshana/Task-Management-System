@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { NotificationDTO } from "../services/api";
 import { useNotifications } from "../context/NotificationContext";
 import { useRouter } from "./Router";
-import { Button, LoadingState } from "./ui";
+import { Button, SkeletonNotificationList } from "./ui";
 
 function formatNotificationTime(value: string): string {
   const createdAt = new Date(value).getTime();
@@ -115,7 +115,7 @@ export default function NotificationBell() {
       </button>
 
       {open && (
-        <div className="notification-panel">
+        <div className="notification-panel custom-scrollbar">
           <div className="notification-panel-header">
             <h2>Notifications</h2>
             {notifications.length > 0 && (
@@ -133,9 +133,9 @@ export default function NotificationBell() {
 
           {error && <p className="notification-error">{error}</p>}
 
-          <div className="notification-list">
+          <div className="notification-list custom-scrollbar">
             {loading && notifications.length === 0 && (
-              <LoadingState label="Loading notifications..." />
+              <SkeletonNotificationList count={4} />
             )}
 
             {!loading && notifications.length === 0 && (

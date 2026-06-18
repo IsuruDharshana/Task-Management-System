@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, APIError } from "../services/api";
 import type { ActivityLog, User } from "../services/api";
-import { Badge, Button, EmptyState, LoadingState, UserAvatar } from "./ui";
+import { Badge, Button, EmptyState, SkeletonList, UserAvatar } from "./ui";
 
 interface ActivityLogSectionProps {
   currentUser: User;
@@ -215,7 +215,7 @@ export default function ActivityLogSection({ currentUser, mode }: ActivityLogSec
         </div>
 
         {loading ? (
-          <LoadingState label="Loading activity..." />
+          <SkeletonList count={6} />
         ) : logs.length === 0 ? (
           <EmptyState title="No activity found" description="Recent audit records and notification activity will appear here." />
         ) : (
