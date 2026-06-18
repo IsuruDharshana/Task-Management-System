@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { api, APIError } from "../services/api";
 import type { TaskAttachment, User } from "../services/api";
-import { Button, ConfirmDialog, EmptyState, LoadingState, UserAvatar } from "./ui";
+import { Button, ConfirmDialog, EmptyState, SkeletonList, UserAvatar } from "./ui";
 
 interface TaskAttachmentsSectionProps {
   taskId: string;
@@ -236,7 +236,7 @@ export default function TaskAttachmentsSection({
       </form>
 
       {loading ? (
-        <LoadingState label="Loading attachments..." />
+        <SkeletonList count={3} />
       ) : attachments.length === 0 ? (
         <EmptyState title="No attachments yet" description="Upload files, images, or supporting documents for this task." />
       ) : (

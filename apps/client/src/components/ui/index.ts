@@ -10,5 +10,20 @@ export { default as LoadingState } from "./LoadingState";
 export { default as Modal } from "./Modal";
 export { default as Select } from "./Select";
 export { default as Sidebar } from "./Sidebar";
+export {
+  SkeletonBlock,
+  SkeletonAppShell,
+  SkeletonComments,
+  SkeletonDashboard,
+  SkeletonFilterBar,
+  SkeletonHeaderSection,
+  SkeletonKanban,
+  SkeletonList,
+  SkeletonNotificationList,
+  SkeletonProjectDetails,
+  SkeletonProjectGrid,
+  SkeletonStatCards,
+  SkeletonTable,
+} from "./Skeleton";
 export { default as Topbar } from "./Topbar";
 export { default as UserAvatar } from "./UserAvatar";

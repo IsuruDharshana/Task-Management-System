@@ -4,7 +4,7 @@ import type { Project, Member, User, EligibleMember, Task } from "../services/ap
 import TaskManagementSection from "./TaskManagementSection";
 import { useRouter } from "./Router";
 import { useSocket } from "../context/SocketContext";
-import { Badge, Button, ConfirmDialog, LoadingState, Modal, UserAvatar } from "./ui";
+import { Badge, Button, ConfirmDialog, Modal, SkeletonProjectDetails, UserAvatar } from "./ui";
 import StatIcon from "./ui/StatIcon";
 
 interface ProjectDetailsProps {
@@ -106,7 +106,7 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
   }, [socket, projectId, fetchData]);
 
   if (loading) {
-    return <LoadingState label="Loading project details..." />;
+    return <SkeletonProjectDetails />;
   }
 
   if (error || !project) {
@@ -479,7 +479,7 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
           ["Completed", overviewStats.completed, "Finished work", "completed"],
           ["Overdue", overviewStats.overdue, "Needs attention", "overdue"],
         ].map(([label, value, helper, icon]) => (
-          <article key={label} className="card modern-metric-card veyra-stat-card stat-card">
+          <article key={label} className="card modern-metric-card veyra-stat-card stat-card project-task-stat-card">
             <div className="stat-card-header">
               <span className="dashboard-card-label">{label}</span>
               <StatIcon name={icon as "total" | "todo" | "progress" | "completed" | "overdue"} />
