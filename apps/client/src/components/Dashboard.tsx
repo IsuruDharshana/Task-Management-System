@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../services/api";
 import type { ActivityLog, DashboardSummary, Project, Task, User } from "../services/api";
 import { useSocket } from "../context/SocketContext";
-import { Badge, Button, EmptyState, LoadingState, UserAvatar } from "./ui";
+import { Badge, Button, EmptyState, SkeletonDashboard, UserAvatar } from "./ui";
 import { useRouter } from "./Router";
 
 interface DashboardProps {
@@ -173,7 +173,7 @@ export default function Dashboard({ currentUser }: DashboardProps) {
   }
 
   if (loading && !summary) {
-    return <LoadingState label="Loading dashboard..." />;
+    return <SkeletonDashboard />;
   }
 
   const metricCards =

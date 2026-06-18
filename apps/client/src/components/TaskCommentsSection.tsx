@@ -2,7 +2,7 @@
 import { api, APIError } from "../services/api";
 import type { TaskComment, User } from "../services/api";
 import { useSocket } from "../context/SocketContext";
-import { Button, ConfirmDialog, EmptyState, LoadingState, UserAvatar } from "./ui";
+import { Button, ConfirmDialog, EmptyState, SkeletonComments, UserAvatar } from "./ui";
 
 interface TaskCommentsSectionProps {
   taskId: string;
@@ -243,7 +243,7 @@ export default function TaskCommentsSection({
       </form>
 
       {loading ? (
-        <LoadingState label="Loading comments..." />
+        <SkeletonComments count={3} />
       ) : comments.length === 0 ? (
         <EmptyState title="No comments yet" description="Discussion and updates for this task will appear here." />
       ) : (

@@ -3,7 +3,7 @@ import { api, APIError } from "../services/api";
 import TaskAttachmentsSection from "./TaskAttachmentsSection";
 import TaskCommentsSection from "./TaskCommentsSection";
 import { useSocket } from "../context/SocketContext";
-import { Badge, Button, ConfirmDialog, EmptyState, Input, LoadingState, UserAvatar } from "./ui";
+import { Badge, Button, ConfirmDialog, EmptyState, Input, SkeletonKanban, SkeletonTable, UserAvatar } from "./ui";
 import type {
   Member,
   Task,
@@ -26,6 +26,7 @@ interface TaskManagementSectionProps {
 type FilterStatus = "all" | TaskStatus;
 type FilterPriority = "all" | TaskPriority;
 type DueDateFilter = "all" | "due_soon" | "overdue" | "no_due_date";
+type TaskViewMode = "list" | "kanban";
 
 const STATUS_LABELS: Record<TaskStatus, string> = {
   to_do: "To Do",
@@ -72,7 +73,7 @@ function getErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
-type TaskActionIconName = "details" | "comments" | "attachments" | "edit" | "delete";
+type TaskActionIconName = "comments" | "attachments" | "edit" | "delete";
 
 function TaskActionIcon({ name }: { name: TaskActionIconName }) {
   const common = {
@@ -87,8 +88,6 @@ function TaskActionIcon({ name }: { name: TaskActionIconName }) {
   };
 
   switch (name) {
-    case "details":
-      return <svg {...common}><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" /></svg>;
     case "comments":
       return <svg {...common}><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" /></svg>;
     case "attachments":
@@ -123,6 +122,10 @@ export default function TaskManagementSection({
   const [dueDateFilter, setDueDateFilter] = useState<DueDateFilter>("all");
   const [sortBy, setSortBy] = useState<TaskSortBy>("created_at");
   const [sortOrder, setSortOrder] = useState<TaskSortOrder>("desc");
+  const [viewMode, setViewMode] = useState<TaskViewMode>(() => {
+    if (typeof window === "undefined") return "list";
+    return window.localStorage.getItem("project-task-view-mode") === "kanban" ? "kanban" : "list";
+  });
 
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -215,7 +218,47 @@ export default function TaskManagementSection({
     });
   }, [dueDateFilter, tasks]);
 
-  const selectedTask = filteredTasks.find((task) => task.id === selectedTaskId) || null;
+  const selectedTask = tasks.find((task) => task.id === selectedTaskId) || null;
+  const tasksByStatus = useMemo(
+    () =>
+      filteredTasks.reduce<Record<TaskStatus, Task[]>>(
+        (groups, task) => {
+          groups[task.status].push(task);
+          return groups;
+        },
+        { to_do: [], in_progress: [], completed: [] }
+      ),
+    [filteredTasks]
+  );
+
+  useEffect(() => {
+    window.localStorage.setItem("project-task-view-mode", viewMode);
+  }, [viewMode]);
+
+  useEffect(() => {
+    if (selectedTaskId && !tasks.some((task) => task.id === selectedTaskId)) {
+      setSelectedTaskId(null);
+    }
+  }, [selectedTaskId, tasks]);
+
+  useEffect(() => {
+    if (!selectedTask) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setSelectedTaskId(null);
+      }
+    };
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [selectedTask]);
 
   const resetForm = () => {
     setForm(EMPTY_FORM);
@@ -316,6 +359,9 @@ export default function TaskManagementSection({
     try {
       await api.tasks.delete(task.id);
       setTaskPendingDelete(null);
+      if (selectedTaskId === task.id) {
+        setSelectedTaskId(null);
+      }
       await loadTasks();
     } catch (err) {
       setActionError(getErrorMessage(err, "Failed to delete task."));
@@ -337,12 +383,10 @@ export default function TaskManagementSection({
 
   const toggleComments = (taskId: string) => {
     setCommentsTaskId((current) => (current === taskId ? null : taskId));
-    setSelectedTaskId(taskId);
   };
 
   const toggleAttachments = (taskId: string) => {
     setAttachmentsTaskId((current) => (current === taskId ? null : taskId));
-    setSelectedTaskId(taskId);
   };
 
   const handleAddAssignee = async () => {
@@ -409,25 +453,27 @@ export default function TaskManagementSection({
     return "Offline";
   };
 
+  const openTaskDetails = (task: Task) => {
+    setSelectedTaskId(task.id);
+  };
+
+  const openTaskEditFromDetails = (task: Task) => {
+    openEditForm(task);
+    setSelectedTaskId(null);
+  };
+
   const renderTaskActions = (task: Task) => (
     <div className="task-action-group">
-      <button
-        type="button"
-        className="task-action-icon task-action-icon--details"
-        aria-label="View task details"
-        title="Details"
-        data-tooltip="Details"
-        onClick={() => setSelectedTaskId(task.id)}
-      >
-        <TaskActionIcon name="details" />
-      </button>
       <button
         type="button"
         className="task-action-icon task-action-icon--comments"
         aria-label={commentsTaskId === task.id ? "Hide task comments" : "Show task comments"}
         title={commentsTaskId === task.id ? "Hide comments" : "Comments"}
         data-tooltip={commentsTaskId === task.id ? "Hide comments" : "Comments"}
-        onClick={() => toggleComments(task.id)}
+        onClick={(event) => {
+          event.stopPropagation();
+          toggleComments(task.id);
+        }}
       >
         <TaskActionIcon name="comments" />
       </button>
@@ -437,35 +483,27 @@ export default function TaskManagementSection({
         aria-label={attachmentsTaskId === task.id ? "Hide task attachments" : "Show task attachments"}
         title={attachmentsTaskId === task.id ? "Hide attachments" : "Attachments"}
         data-tooltip={attachmentsTaskId === task.id ? "Hide attachments" : "Attachments"}
-        onClick={() => toggleAttachments(task.id)}
+        onClick={(event) => {
+          event.stopPropagation();
+          toggleAttachments(task.id);
+        }}
       >
         <TaskActionIcon name="attachments" />
       </button>
-      {isProjectPM ? (
-        <>
-          <button
-            type="button"
-            className="task-action-icon task-action-icon--edit"
-            aria-label="Edit task"
-            title="Edit"
-            data-tooltip="Edit"
-            onClick={() => openEditForm(task)}
-          >
-            <TaskActionIcon name="edit" />
-          </button>
-          <button
-            type="button"
-            className="task-action-icon task-action-icon--danger"
-            aria-label="Delete task"
-            title="Delete"
-            data-tooltip="Delete"
-            onClick={() => setTaskPendingDelete(task)}
-          >
-            <TaskActionIcon name="delete" />
-          </button>
-        </>
-      ) : (
-        <span className="muted-text">Status only</span>
+      {isProjectPM && (
+        <button
+          type="button"
+          className="task-action-icon task-action-icon--danger"
+          aria-label="Delete task"
+          title="Delete"
+          data-tooltip="Delete"
+          onClick={(event) => {
+            event.stopPropagation();
+            setTaskPendingDelete(task);
+          }}
+        >
+          <TaskActionIcon name="delete" />
+        </button>
       )}
     </div>
   );
@@ -578,6 +616,29 @@ export default function TaskManagementSection({
           <button className="btn btn-secondary task-filter-apply" onClick={loadTasks} disabled={loading}>
             Apply
           </button>
+        </div>
+
+        <div className="task-view-toolbar" aria-label="Task view options">
+          <div className="task-view-toggle" role="tablist" aria-label="Task view">
+            <button
+              type="button"
+              className={viewMode === "list" ? "active" : ""}
+              role="tab"
+              aria-selected={viewMode === "list"}
+              onClick={() => setViewMode("list")}
+            >
+              List
+            </button>
+            <button
+              type="button"
+              className={viewMode === "kanban" ? "active" : ""}
+              role="tab"
+              aria-selected={viewMode === "kanban"}
+              onClick={() => setViewMode("kanban")}
+            >
+              Kanban
+            </button>
+          </div>
         </div>
 
         {(showCreateForm || editingTask) && isProjectPM && (
@@ -718,12 +779,13 @@ export default function TaskManagementSection({
         )}
 
         {loading ? (
-          <LoadingState label="Loading tasks..." />
+          viewMode === "kanban" ? <SkeletonKanban /> : <SkeletonTable rows={6} columns={8} />
         ) : filteredTasks.length === 0 ? (
           <EmptyState title="No tasks found" description="Adjust filters or create the first task for this project." />
         ) : (
+          viewMode === "list" ? (
           <>
-          <div className="table-responsive task-table-wrap">
+          <div className="table-responsive task-table-wrap custom-scrollbar">
             <table className="users-table task-table modern-task-table">
               <thead>
                 <tr>
@@ -740,7 +802,10 @@ export default function TaskManagementSection({
               <tbody>
                 {filteredTasks.map((task) => (
                   <React.Fragment key={task.id}>
-                    <tr className={selectedTaskId === task.id ? "selected-task-row" : ""}>
+                    <tr
+                      className={`clickable-task-row ${selectedTaskId === task.id ? "selected-task-row" : ""}`}
+                      onClick={() => openTaskDetails(task)}
+                    >
                       <td>
                         <strong className="task-title-cell">{task.title}</strong>
                         {task.description && <span className="task-description-cell">{task.description}</span>}
@@ -765,6 +830,7 @@ export default function TaskManagementSection({
                           <select
                             className="task-status-select"
                             value={task.status}
+                            onClick={(event) => event.stopPropagation()}
                             onChange={(event) => handleCollaboratorStatusChange(task, event.target.value as TaskStatus)}
                           >
                             <option value="to_do">To Do</option>
@@ -810,7 +876,11 @@ export default function TaskManagementSection({
           </div>
           <div className="mobile-task-card-list">
             {filteredTasks.map((task) => (
-              <article key={task.id} className="mobile-task-card">
+              <article
+                key={task.id}
+                className="mobile-task-card clickable-task-card"
+                onClick={() => openTaskDetails(task)}
+              >
                 <div className="mobile-task-card-header">
                   <div>
                     <strong>{task.title}</strong>
@@ -841,6 +911,7 @@ export default function TaskManagementSection({
                         <select
                           className="task-status-select"
                           value={task.status}
+                          onClick={(event) => event.stopPropagation()}
                           onChange={(event) => handleCollaboratorStatusChange(task, event.target.value as TaskStatus)}
                         >
                           <option value="to_do">To Do</option>
@@ -855,66 +926,147 @@ export default function TaskManagementSection({
                 </dl>
                 <div className="mobile-task-actions">{renderTaskActions(task)}</div>
                 {attachmentsTaskId === task.id && (
-                  <TaskAttachmentsSection taskId={task.id} currentUser={currentUser} isProjectPM={isProjectPM} />
+                  <div onClick={(event) => event.stopPropagation()}>
+                    <TaskAttachmentsSection taskId={task.id} currentUser={currentUser} isProjectPM={isProjectPM} />
+                  </div>
                 )}
                 {commentsTaskId === task.id && (
-                  <TaskCommentsSection taskId={task.id} currentUser={currentUser} isProjectPM={isProjectPM} />
+                  <div onClick={(event) => event.stopPropagation()}>
+                    <TaskCommentsSection taskId={task.id} currentUser={currentUser} isProjectPM={isProjectPM} />
+                  </div>
                 )}
               </article>
             ))}
           </div>
           </>
+          ) : (
+            <div className="kanban-board project-task-kanban custom-scrollbar" aria-label="Task Kanban board">
+              {(["to_do", "in_progress", "completed"] as TaskStatus[]).map((status) => (
+                <section key={status} className="kanban-column">
+                  <div className="kanban-column-header">
+                    <h3>{STATUS_LABELS[status]}</h3>
+                    <span>{tasksByStatus[status].length}</span>
+                  </div>
+                  <div className="kanban-task-list">
+                    {tasksByStatus[status].length === 0 ? (
+                      <div className="kanban-empty-state">No tasks</div>
+                    ) : (
+                      tasksByStatus[status].map((task) => (
+                        <button
+                          key={task.id}
+                          type="button"
+                          className={`kanban-task-card priority-${task.priority}`}
+                          onClick={() => openTaskDetails(task)}
+                        >
+                          <div className="kanban-task-topline">
+                            <Badge variant={task.priority}>{PRIORITY_LABELS[task.priority]}</Badge>
+                            <span className={`due-chip due-${getDueState(task)}`}>{formatDate(task.dueDate)}</span>
+                          </div>
+                          <span className="kanban-project-name">{projectName}</span>
+                          <h4>{task.title}</h4>
+                          {task.description && <p>{task.description}</p>}
+                          <div className="kanban-task-footer">
+                            <div className="task-assignees-cell avatar-stack">
+                              {task.assignees.length === 0 ? (
+                                <span className="muted-text">Unassigned</span>
+                              ) : (
+                                task.assignees.map((assignee) => (
+                                  <UserAvatar key={assignee.id} name={assignee.userName} size="sm" />
+                                ))
+                              )}
+                            </div>
+                          </div>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </section>
+              ))}
+            </div>
+          )
         )}
 
         {selectedTask && (
-          <aside className="task-detail-drawer card">
-            <div className="task-detail-header">
-              <div>
-                <span className="kanban-project-name">{projectName}</span>
-                <h3>{selectedTask.title}</h3>
-              </div>
-              <button type="button" className="btn btn-secondary btn-xs" onClick={() => setSelectedTaskId(null)}>Close</button>
-            </div>
-            <div className="task-detail-badges">
-              <Badge variant={selectedTask.status}>{STATUS_LABELS[selectedTask.status]}</Badge>
-              <Badge variant={selectedTask.priority}>{PRIORITY_LABELS[selectedTask.priority]}</Badge>
-              <span className={`due-chip due-${getDueState(selectedTask)}`}>{formatDate(selectedTask.dueDate)}</span>
-            </div>
-            <div className="task-detail-grid">
-              <section>
-                <h4>Description</h4>
-                <p>{selectedTask.description || "No description provided."}</p>
-              </section>
-              <section>
-                <h4>Assignees</h4>
-                <div className="task-detail-assignees">
-                  {selectedTask.assignees.length === 0 ? (
-                    <span className="muted-text">Unassigned</span>
-                  ) : (
-                    selectedTask.assignees.map((assignee) => (
-                      <div key={assignee.id}>
-                        <UserAvatar name={assignee.userName} size="sm" />
-                        <span>{assignee.userName}</span>
-                      </div>
-                    ))
-                  )}
+          <div
+            className="task-detail-modal-backdrop"
+            role="presentation"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) {
+                setSelectedTaskId(null);
+              }
+            }}
+          >
+            <aside className="task-detail-modal" role="dialog" aria-modal="true" aria-labelledby="task-detail-modal-title">
+              <div className="task-detail-header">
+                <div>
+                  <span className="kanban-project-name">{projectName}</span>
+                  <h3 id="task-detail-modal-title">{selectedTask.title}</h3>
                 </div>
-              </section>
-              <section>
-                <h4>Properties</h4>
-                <dl className="task-properties">
-                  <div><dt>Project</dt><dd>{projectName}</dd></div>
-                  <div><dt>Created</dt><dd>{formatDateTime(selectedTask.createdAt)}</dd></div>
-                  <div><dt>Last updated</dt><dd>{formatDateTime(selectedTask.updatedAt)}</dd></div>
-                  <div><dt>Completed</dt><dd>{selectedTask.completedAt ? formatDateTime(selectedTask.completedAt) : "Not completed"}</dd></div>
-                </dl>
-              </section>
-            </div>
-            <div className="task-detail-sections">
-              <TaskAttachmentsSection taskId={selectedTask.id} currentUser={currentUser} isProjectPM={isProjectPM} />
-              <TaskCommentsSection taskId={selectedTask.id} currentUser={currentUser} isProjectPM={isProjectPM} />
-            </div>
-          </aside>
+                <div className="task-detail-modal-actions">
+                  {isProjectPM && (
+                    <button
+                      type="button"
+                      className="task-action-icon task-action-icon--edit"
+                      aria-label="Edit task"
+                      title="Edit"
+                      onClick={() => openTaskEditFromDetails(selectedTask)}
+                    >
+                      <TaskActionIcon name="edit" />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="task-detail-close"
+                    aria-label="Close task details"
+                    onClick={() => setSelectedTaskId(null)}
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+              <div className="task-detail-badges">
+                <Badge variant={selectedTask.status}>{STATUS_LABELS[selectedTask.status]}</Badge>
+                <Badge variant={selectedTask.priority}>{PRIORITY_LABELS[selectedTask.priority]}</Badge>
+                <span className={`due-chip due-${getDueState(selectedTask)}`}>{formatDate(selectedTask.dueDate)}</span>
+              </div>
+              <div className="task-detail-modal-body custom-scrollbar">
+                <div className="task-detail-grid">
+                  <section className="task-detail-card task-detail-description-card">
+                    <h4>Description</h4>
+                    <p>{selectedTask.description || "No description provided."}</p>
+                  </section>
+                  <section className="task-detail-card">
+                    <h4>Assignees</h4>
+                    <div className="task-detail-assignees">
+                      {selectedTask.assignees.length === 0 ? (
+                        <span className="muted-text">Unassigned</span>
+                      ) : (
+                        selectedTask.assignees.map((assignee) => (
+                          <div key={assignee.id}>
+                            <UserAvatar name={assignee.userName} size="sm" />
+                            <span>{assignee.userName}</span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </section>
+                  <section className="task-detail-card">
+                    <h4>Properties</h4>
+                    <dl className="task-properties">
+                      <div><dt>Project</dt><dd>{projectName}</dd></div>
+                      <div><dt>Created</dt><dd>{formatDateTime(selectedTask.createdAt)}</dd></div>
+                      <div><dt>Last updated</dt><dd>{formatDateTime(selectedTask.updatedAt)}</dd></div>
+                      <div><dt>Completed</dt><dd>{selectedTask.completedAt ? formatDateTime(selectedTask.completedAt) : "Not completed"}</dd></div>
+                    </dl>
+                  </section>
+                </div>
+                <div className="task-detail-sections">
+                  <TaskAttachmentsSection taskId={selectedTask.id} currentUser={currentUser} isProjectPM={isProjectPM} />
+                  <TaskCommentsSection taskId={selectedTask.id} currentUser={currentUser} isProjectPM={isProjectPM} />
+                </div>
+              </div>
+            </aside>
+          </div>
         )}
         <ConfirmDialog
           open={Boolean(taskPendingDelete)}
