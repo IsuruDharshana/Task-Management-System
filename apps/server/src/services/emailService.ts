@@ -1,9 +1,9 @@
-import nodemailer from "nodemailer";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { escapeHtml } from "../email/templates/baseEmailTemplate.js";
 import { buildWelcomeEmailHtml, buildWelcomeEmailText } from "../email/templates/welcomeEmailTemplate.js";
+import { sendWithResend } from "./email/resendProvider.js";
 
 interface TemporaryPasswordEmailInput {
   to: string;
@@ -16,19 +16,8 @@ interface EmailContent {
   subject: string;
   text: string;
   html: string;
-  attachments?: nodemailer.SendMailOptions["attachments"];
 }
 
-interface SmtpConfig {
-  host: string;
-  port: number;
-  secure: boolean;
-  user: string;
-  pass: string;
-  from: string;
-}
-
-let transporter: nodemailer.Transporter | null = null;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -42,85 +31,31 @@ function getWelcomeLogoPath(): string | null {
   return candidates.find((candidate) => fs.existsSync(candidate)) || null;
 }
 
-function getSmtpConfig(): SmtpConfig | null {
-  const host = process.env.SMTP_HOST?.trim();
-  const portValue = process.env.SMTP_PORT?.trim();
-  const user = process.env.SMTP_USER?.trim();
-  const pass = process.env.SMTP_PASS?.trim();
-  const from = process.env.MAIL_FROM?.trim() || process.env.EMAIL_FROM?.trim();
-
-  if (!host || !portValue || !user || !pass || !from) {
-    return null;
-  }
-
-  const port = Number(portValue);
-
-  if (!Number.isInteger(port) || port <= 0) {
-    throw new Error("SMTP_PORT must be a positive integer.");
-  }
-
-  return {
-    host,
-    port,
-    secure: process.env.SMTP_SECURE === "true",
-    user,
-    pass,
-    from,
-  };
-}
-
-function getTransporter(config: SmtpConfig): nodemailer.Transporter {
-  if (!transporter) {
-    transporter = nodemailer.createTransport({
-      host: config.host,
-      port: config.port,
-      secure: config.secure,
-      auth: {
-        user: config.user,
-        pass: config.pass,
-      },
-    });
-  }
-
-  return transporter;
-}
-
-function getEmailLogoSource(canUseCid: boolean): { logoSrc: string | null; attachments?: nodemailer.SendMailOptions["attachments"] } {
+function getEmailLogoSource(): { logoSrc: string | null } {
   const emailLogoUrl = process.env.EMAIL_LOGO_URL?.trim();
 
   if (emailLogoUrl) {
     return { logoSrc: emailLogoUrl };
   }
 
+  // Resend sends are not attached to local files, so we can only use a
+  // logo here if it's hosted at a public URL (EMAIL_LOGO_URL).
   const logoPath = getWelcomeLogoPath();
-
-  if (canUseCid && logoPath) {
-    return {
-      logoSrc: "cid:veyra-logo",
-      attachments: [
-        {
-          filename: "Logo_transparent.png",
-          path: logoPath,
-          cid: "veyra-logo",
-        },
-      ],
-    };
+  if (logoPath) {
+    console.warn("EMAIL_LOGO_URL is not set, so the Veyra logo will be omitted from onboarding emails.");
   }
 
   return { logoSrc: null };
 }
 
-function buildOnboardingEmail(
-  {
+function buildOnboardingEmail({
   to,
   name,
   temporaryPassword,
   loginUrl,
-}: TemporaryPasswordEmailInput,
-  canUseCidLogo: boolean
-): EmailContent {
+}: TemporaryPasswordEmailInput): EmailContent {
   const subject = "Welcome to Veyra";
-  const logo = getEmailLogoSource(canUseCidLogo);
+  const logo = getEmailLogoSource();
 
   return {
     subject,
@@ -138,7 +73,6 @@ function buildOnboardingEmail(
       loginUrl,
       logoSrc: logo.logoSrc,
     }),
-    attachments: logo.attachments,
   };
 }
 
@@ -182,9 +116,9 @@ async function sendEmailOrPrintFallback(
   content: EmailContent,
   fallbackTitle: string
 ): Promise<void> {
-  const smtpConfig = getSmtpConfig();
+  const hasResendConfig = Boolean(process.env.RESEND_API_KEY) && Boolean(process.env.EMAIL_FROM || process.env.MAIL_FROM);
 
-  if (!smtpConfig) {
+  if (!hasResendConfig) {
     console.log(`
 ========================================
 [EMAIL] VEYRA DEV EMAIL - ${fallbackTitle}
@@ -193,7 +127,7 @@ async function sendEmailOrPrintFallback(
 To: ${input.to}
 Subject: ${content.subject}
 
-Email delivery is not configured. Configure SMTP settings to send this message.
+Email delivery is not configured. Set RESEND_API_KEY and EMAIL_FROM to send this message.
 Login URL: ${input.loginUrl}
 Temporary password omitted from logs.
 
@@ -202,13 +136,11 @@ Temporary password omitted from logs.
     return;
   }
 
-  await getTransporter(smtpConfig).sendMail({
-    from: smtpConfig.from,
+  await sendWithResend({
     to: input.to,
     subject: content.subject,
-    text: content.text,
     html: content.html,
-    attachments: content.attachments,
+    text: content.text,
   });
 
   console.info(`Sent Veyra email "${content.subject}" to ${input.to}.`);
@@ -221,7 +153,7 @@ export async function sendUserOnboardingEmail({
   loginUrl,
 }: TemporaryPasswordEmailInput): Promise<void> {
   const input = { to, name, temporaryPassword, loginUrl };
-  await sendEmailOrPrintFallback(input, buildOnboardingEmail(input, Boolean(getSmtpConfig())), "USER ONBOARDING");
+  await sendEmailOrPrintFallback(input, buildOnboardingEmail(input), "USER ONBOARDING");
 }
 
 export async function sendPasswordResetEmail({
