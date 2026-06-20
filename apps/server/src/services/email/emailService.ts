@@ -1,4 +1,4 @@
-import { sendWithNodemailer } from "./nodemailerEmailProvider.js";
+import { sendWithResend } from "./resendProvider.js";
 
 type WelcomeEmailInput = {
   to: string;
@@ -8,8 +8,6 @@ type WelcomeEmailInput = {
 };
 
 export async function sendWelcomeEmail(input: WelcomeEmailInput) {
-  const provider = process.env.MAIL_PROVIDER ?? "nodemailer";
-
   const subject = "Welcome to Veyra Task Management System";
 
   const loginUrl = input.loginUrl ?? "http://localhost:5173/login";
@@ -38,13 +36,9 @@ export async function sendWelcomeEmail(input: WelcomeEmailInput) {
     </div>
   `;
 
-  if (provider === "nodemailer") {
-    return sendWithNodemailer({
-      to: input.to,
-      subject,
-      html,
-    });
-  }
-
-  throw new Error(`Unsupported mail provider: ${provider}`);
+  return sendWithResend({
+    to: input.to,
+    subject,
+    html,
+  });
 }
