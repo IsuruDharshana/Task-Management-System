@@ -3000,6 +3000,53 @@ h3 {
   justify-content: flex-start;
 }
 
+.activity-mini-list .admin-activity-row {
+  align-items: flex-start;
+}
+
+.admin-activity-user {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+}
+
+.admin-activity-user strong,
+.admin-activity-user span {
+  min-width: 0;
+}
+
+.admin-activity-user strong {
+  overflow-wrap: anywhere;
+}
+
+.attention-list .admin-attention-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+}
+
+.admin-attention-user {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.admin-attention-user strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.admin-attention-email {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .activity-mini-list article:last-child,
 .attention-list article:last-child {
   border-bottom: 0;
@@ -3010,6 +3057,19 @@ h3 {
   gap: 6px;
   flex-wrap: wrap;
   justify-content: flex-end;
+  align-items: flex-start;
+  min-width: 0;
+  max-width: min(100%, 180px);
+}
+
+@media (max-width: 560px) {
+  .attention-list .admin-attention-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .attention-list .admin-attention-row .attention-badges {
+    justify-content: flex-start;
+  }
 }
 
 .role-distribution {
@@ -3050,6 +3110,10 @@ h3 {
 .admin-create-form .alert,
 .admin-create-form .form-actions {
   grid-column: 1 / -1;
+}
+
+.admin-create-modal-form {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .admin-users-card {

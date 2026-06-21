@@ -17,7 +17,7 @@ import { AppLayout, ErrorState, SkeletonAppShell } from "./components/ui";
 import "./App.css";
 
 function getHomePath(user: User): string {
-  if (user.role === "admin") return "/admin";
+  if (user.role === "admin") return "/admin/dashboard";
   return "/dashboard";
 }
 
@@ -74,6 +74,10 @@ function AppContent() {
   const matchCreateProject = useRouteMatch("/projects/new");
   const matchProjectDetails = useRouteMatch("/projects/:projectId");
   const matchAdmin = useRouteMatch("/admin");
+  const matchAdminDashboard = useRouteMatch("/admin/dashboard");
+  const matchAdminUsers = useRouteMatch("/admin/users");
+  const matchAdminNotifications = useRouteMatch("/admin/notifications");
+  const matchAdminSettings = useRouteMatch("/admin/settings");
   const matchActivityLog = useRouteMatch("/activity-log");
   const matchNotifications = useRouteMatch("/notifications");
   const matchSettings = useRouteMatch("/settings");
@@ -130,7 +134,7 @@ function AppContent() {
       return <ProjectDetails projectId={projectId} currentUser={currentUser} />;
     }
 
-    if (matchAdmin.matches) {
+    if (matchAdmin.matches || matchAdminDashboard.matches || matchAdminUsers.matches) {
       if (currentUser.role !== "admin") {
         return (
           <div className="unauthorized-container card">
@@ -138,7 +142,29 @@ function AppContent() {
           </div>
         );
       }
-      return <AdminPanel />;
+      return <AdminPanel view={matchAdminUsers.matches ? "users" : "dashboard"} />;
+    }
+
+    if (matchAdminNotifications.matches) {
+      if (currentUser.role !== "admin") {
+        return (
+          <div className="unauthorized-container card">
+            <ErrorState title="Access Denied" message="You do not have administrative privileges to access this page." />
+          </div>
+        );
+      }
+      return <ActivityLogSection currentUser={currentUser} mode="notifications" />;
+    }
+
+    if (matchAdminSettings.matches) {
+      if (currentUser.role !== "admin") {
+        return (
+          <div className="unauthorized-container card">
+            <ErrorState title="Access Denied" message="You do not have administrative privileges to access this page." />
+          </div>
+        );
+      }
+      return <SettingsPage currentUser={currentUser} onUserUpdated={setCurrentUser} />;
     }
 
     if (matchActivityLog.matches) {

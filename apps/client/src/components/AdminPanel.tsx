@@ -1,16 +1,22 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { api, APIError } from "../services/api";
 import type { AdminUser } from "../services/api";
 import { Badge, Button, ConfirmDialog, EmptyState, Input, Select, SkeletonTable, UserAvatar } from "./ui";
+import CreateUserModal from "./CreateUserModal";
 
 type EditableRole = "project_manager" | "collaborator";
 type RoleFilter = "all" | "admin" | "project_manager" | "collaborator";
 type StatusFilter = "all" | "active" | "inactive";
 type PasswordFilter = "all" | "required" | "not_required";
+type AdminPanelView = "dashboard" | "users";
 type ConfirmAction =
   | { type: "deactivate"; user: AdminUser }
   | { type: "reactivate"; user: AdminUser }
   | { type: "reset-password"; user: AdminUser };
+
+interface AdminPanelProps {
+  view?: AdminPanelView;
+}
 
 function getErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof APIError) return error.message;
@@ -28,7 +34,7 @@ function formatDateTime(value?: string | null): string {
   return new Date(value).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
-export default function AdminPanel() {
+export default function AdminPanel({ view = "dashboard" }: AdminPanelProps) {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,12 +46,7 @@ export default function AdminPanel() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [passwordFilter, setPasswordFilter] = useState<PasswordFilter>("all");
 
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [role, setRole] = useState<EditableRole>("project_manager");
-  const [creating, setCreating] = useState(false);
-  const [createError, setCreateError] = useState<string | null>(null);
-  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [isCreateUserOpen, setIsCreateUserOpen] = useState(false);
   const [createdUserPayload, setCreatedUserPayload] = useState<{ user: AdminUser } | null>(null);
 
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
@@ -110,27 +111,11 @@ export default function AdminPanel() {
     setUsers((currentUsers) => currentUsers.map((user) => (user.id === updatedUser.id ? updatedUser : user)));
   };
 
-  const handleCreateUser = async (event: React.FormEvent) => {
-    event.preventDefault();
-    setCreateError(null);
-    setCreatedUserPayload(null);
+  const handleUserCreated = async (user: AdminUser) => {
+    setCreatedUserPayload({ user });
     setActionMessage(null);
     setActionError(null);
-    setCreating(true);
-
-    try {
-      const result = await api.admin.createUser({ name: name.trim(), email: email.trim(), role });
-      setCreatedUserPayload(result);
-      setName("");
-      setEmail("");
-      setRole("project_manager");
-      setShowCreateForm(false);
-      await fetchUsers();
-    } catch (err) {
-      setCreateError(getErrorMessage(err, "Failed to create user."));
-    } finally {
-      setCreating(false);
-    }
+    await fetchUsers();
   };
 
   const handleStartEdit = (user: AdminUser) => {
@@ -148,7 +133,7 @@ export default function AdminPanel() {
     setActionError(null);
   };
 
-  const handleSaveEdit = async (event: React.FormEvent) => {
+  const handleSaveEdit = async (event: FormEvent) => {
     event.preventDefault();
     if (!editingUser) return;
 
@@ -247,115 +232,95 @@ export default function AdminPanel() {
     <div className="admin-panel veyra-page">
       <div className="modern-page-header">
         <div>
-          <h1>Admin Dashboard</h1>
-          <p className="subtitle">Monitor user access and account attention across Veyra.</p>
+          <h1>{view === "dashboard" ? "Admin Dashboard" : "User Management"}</h1>
+          <p className="subtitle">
+            {view === "dashboard"
+              ? "Monitor user access and account attention across Veyra."
+              : "Create, update, activate, deactivate, and manage user access."}
+          </p>
         </div>
         <div className="header-actions">
           <Button type="button" variant="secondary" onClick={fetchUsers} disabled={loading}>
             {loading ? "Refreshing..." : "Refresh"}
           </Button>
-          <Button type="button" onClick={() => setShowCreateForm((current) => !current)}>
+          <Button type="button" onClick={() => setIsCreateUserOpen(true)}>
             Create New User
           </Button>
         </div>
       </div>
 
-      <div className="admin-dashboard-grid">
-        {[
-          ["Total Users", metrics.totalUsers],
-          ["Active Users", metrics.activeUsers],
-          ["Inactive Users", metrics.inactiveUsers],
-          ["Pending Password Resets", metrics.pendingPasswordResets],
-        ].map(([label, value]) => (
-          <article key={label} className="card modern-metric-card">
-            <span className="dashboard-card-label">{label}</span>
-            <strong className="dashboard-card-value">{value}</strong>
-            <span className="dashboard-card-helper">Derived from registered users</span>
-          </article>
-        ))}
-      </div>
-
-      <div className="admin-insight-grid">
-        <section className="card">
-          <h2>Recent User Activity</h2>
-          <div className="activity-mini-list">
-            {recentUserActivity.length === 0 ? (
-              <p className="muted-text">No user activity available.</p>
-            ) : (
-              recentUserActivity.map((user) => (
-                <article key={user.id}>
-                  <UserAvatar name={user.name} size="sm" />
-                  <div>
-                    <strong>{user.name}</strong>
-                    <span>Updated {formatDateTime(user.updatedAt || user.createdAt)}</span>
-                  </div>
-                </article>
-              ))
-            )}
-          </div>
-        </section>
-
-        <section className="card">
-          <h2>Users Requiring Attention</h2>
-          <div className="attention-list">
-            {usersRequiringAttention.length === 0 ? (
-              <p className="muted-text">No users currently require attention.</p>
-            ) : (
-              usersRequiringAttention.map((user) => (
-                <article key={user.id}>
-                  <div>
-                    <strong>{user.name}</strong>
-                    <span>{user.email}</span>
-                  </div>
-                  <div className="attention-badges">
-                    {!user.isActive && <Badge variant="inactive">Inactive</Badge>}
-                    {user.mustResetPassword && <Badge variant="overdue">Reset required</Badge>}
-                  </div>
-                </article>
-              ))
-            )}
-          </div>
-        </section>
-
-        <section className="card">
-          <h2>Role Distribution</h2>
-          <div className="role-distribution">
-            {Object.entries(metrics.roleDistribution).map(([roleName, count]) => (
-              <div key={roleName}>
-                <span>{roleName.replace("_", " ")}</span>
-                <strong>{count}</strong>
-              </div>
+      {view === "dashboard" && (
+        <>
+          <div className="admin-dashboard-grid">
+            {[
+              ["Total Users", metrics.totalUsers],
+              ["Active Users", metrics.activeUsers],
+              ["Inactive Users", metrics.inactiveUsers],
+              ["Pending Password Resets", metrics.pendingPasswordResets],
+            ].map(([label, value]) => (
+              <article key={label} className="card modern-metric-card">
+                <span className="dashboard-card-label">{label}</span>
+                <strong className="dashboard-card-value">{value}</strong>
+                <span className="dashboard-card-helper">Derived from registered users</span>
+              </article>
             ))}
           </div>
-        </section>
-      </div>
 
-      {showCreateForm && (
-        <section className="card admin-create-panel">
-          <div className="section-heading-row">
-            <div>
-              <h2>Create New User</h2>
-              <p className="card-desc">Add a project manager or collaborator. Temporary credentials are sent through the configured email channel.</p>
-            </div>
+          <div className="admin-insight-grid">
+            <section className="card">
+              <h2>Recent User Activity</h2>
+              <div className="activity-mini-list">
+                {recentUserActivity.length === 0 ? (
+                  <p className="muted-text">No user activity available.</p>
+                ) : (
+                  recentUserActivity.map((user) => (
+                    <article key={user.id} className="admin-activity-row">
+                      <UserAvatar name={user.name} size="sm" />
+                      <div className="admin-activity-user">
+                        <strong>{user.name}</strong>
+                        <span>Updated {formatDateTime(user.updatedAt || user.createdAt)}</span>
+                      </div>
+                    </article>
+                  ))
+                )}
+              </div>
+            </section>
+
+            <section className="card">
+              <h2>Users Requiring Attention</h2>
+              <div className="attention-list">
+                {usersRequiringAttention.length === 0 ? (
+                  <p className="muted-text">No users currently require attention.</p>
+                ) : (
+                  usersRequiringAttention.map((user) => (
+                    <article key={user.id} className="admin-attention-row">
+                      <div className="admin-attention-user">
+                        <strong>{user.name}</strong>
+                        <span className="admin-attention-email">{user.email}</span>
+                      </div>
+                      <div className="attention-badges">
+                        {!user.isActive && <Badge variant="inactive">Inactive</Badge>}
+                        {user.mustResetPassword && <Badge variant="overdue">Reset required</Badge>}
+                      </div>
+                    </article>
+                  ))
+                )}
+              </div>
+            </section>
           </div>
-          <form onSubmit={handleCreateUser} className="admin-create-form">
-            {createError && <div className="alert alert-danger">{createError}</div>}
-            <Input id="user-name" label="Full Name" value={name} onChange={(event) => setName(event.target.value)} required disabled={creating} />
-            <Input id="user-email" type="email" label="Email Address" value={email} onChange={(event) => setEmail(event.target.value)} required disabled={creating} />
-            <Select id="user-role" label="System Role" value={role} onChange={(event) => setRole(event.target.value as EditableRole)} disabled={creating}>
-              <option value="project_manager">Project Manager</option>
-              <option value="collaborator">Collaborator</option>
-            </Select>
-            <div className="form-actions">
-              <Button type="button" variant="secondary" onClick={() => setShowCreateForm(false)} disabled={creating}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={creating}>
-                {creating ? "Creating..." : "Create User"}
-              </Button>
+
+          <section className="card admin-role-distribution-card">
+            <h2>Role Distribution</h2>
+            <div className="role-distribution">
+              {Object.entries(metrics.roleDistribution).map(([roleName, count]) => (
+                <div key={roleName}>
+                  <span>{roleName.replace("_", " ")}</span>
+                  <strong>{count}</strong>
+                </div>
+              ))}
             </div>
-          </form>
-        </section>
+          </section>
+        </>
       )}
 
       {createdUserPayload && (
@@ -365,11 +330,11 @@ export default function AdminPanel() {
         </div>
       )}
 
-      <section className="card admin-users-card">
+      {view === "users" && <section className="card admin-users-card">
         <div className="section-heading-row">
           <div>
-            <h1>User Management</h1>
-            <p className="subtitle">Create, update, activate, deactivate, and manage user access.</p>
+            <h2>Users</h2>
+            <p className="subtitle">Search, filter, and manage registered users.</p>
           </div>
         </div>
 
@@ -473,7 +438,9 @@ export default function AdminPanel() {
           </div>
           </>
         )}
-      </section>
+      </section>}
+
+      <CreateUserModal open={isCreateUserOpen} onOpenChange={setIsCreateUserOpen} onUserCreated={handleUserCreated} />
 
       {editingUser && (
         <div className="modal-backdrop" role="presentation">
