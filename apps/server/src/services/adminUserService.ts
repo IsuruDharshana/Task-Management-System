@@ -1,11 +1,10 @@
 import { supabaseAdmin } from "../config/supabaseAdmin.js";
 import { env } from "../config/env.js";
-import { sendPasswordResetEmail } from "./emailService.js";
+import { sendPasswordResetEmail, sendUserOnboardingEmail } from "./emailService.js";
 import type { UserRole } from "../types/auth.js";
 import { AppError } from "../utils/appError.js";
 import { generateTemporaryPassword, hashPassword } from "../utils/password.js";
 import { logActivity } from "./activityLogService.js";
-import { sendWelcomeEmail } from "./email/emailService.js";
 
 type AdminCreatableRole = "project_manager" | "collaborator";
 type UserStatusFilter = "active" | "inactive" | "all";
@@ -279,7 +278,7 @@ export async function createUserByAdmin(
   let emailSent = true;
 
   try {
-    await sendWelcomeEmail({
+    await sendUserOnboardingEmail({
       to: user.email,
       name: user.name,
       temporaryPassword,
