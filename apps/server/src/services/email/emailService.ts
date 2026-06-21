@@ -1,3 +1,5 @@
+import { env } from "../../config/env.js";
+import { buildWelcomeEmailHtml, buildWelcomeEmailText } from "../../email/templates/welcomeEmailTemplate.js";
 import { sendWithResend } from "./resendProvider.js";
 
 type WelcomeEmailInput = {
@@ -10,35 +12,19 @@ type WelcomeEmailInput = {
 export async function sendWelcomeEmail(input: WelcomeEmailInput) {
   const subject = "Welcome to Veyra Task Management System";
 
-  const loginUrl = input.loginUrl ?? "http://localhost:5173/login";
-
-  const html = `
-    <div style="font-family: Arial, sans-serif; line-height: 1.6;">
-      <h2>Welcome to Veyra Task Management System</h2>
-
-      <p>Hello ${input.name},</p>
-
-      <p>Your Veyra account has been created.</p>
-
-      <p><strong>Email:</strong> ${input.to}</p>
-      <p><strong>Temporary Password:</strong> ${input.temporaryPassword}</p>
-
-      <p>
-        Please log in using the temporary password above. 
-        You will be required to reset your password before using the system.
-      </p>
-
-      <p>
-        Login here: <a href="${loginUrl}">${loginUrl}</a>
-      </p>
-
-      <p>Thank you,<br/>Veyra TMS</p>
-    </div>
-  `;
+  const loginUrl = input.loginUrl ?? `${env.clientUrl}/login`;
+  const templateInput = {
+    name: input.name,
+    email: input.to,
+    temporaryPassword: input.temporaryPassword,
+    loginUrl,
+    logoSrc: process.env.EMAIL_LOGO_URL?.trim() || null,
+  };
 
   return sendWithResend({
     to: input.to,
     subject,
-    html,
+    html: buildWelcomeEmailHtml(templateInput),
+    text: buildWelcomeEmailText(templateInput),
   });
 }
