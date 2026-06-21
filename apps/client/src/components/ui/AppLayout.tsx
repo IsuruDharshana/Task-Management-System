@@ -21,13 +21,20 @@ export default function AppLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const isAdmin = currentUser.role === "admin";
   const isProjectManager = currentUser.role === "project_manager";
+  const isAdminDashboardRoute = (pathname: string) =>
+    pathname === "/admin" || pathname === "/admin/dashboard";
+  const isUsersRoute = (pathname: string) =>
+    pathname === "/admin/users" || pathname.startsWith("/admin/users/");
+  const isNotificationsRoute = (pathname: string) =>
+    pathname === "/admin/notifications" || pathname.startsWith("/admin/notifications/");
+  const isSettingsRoute = (pathname: string) =>
+    pathname === "/admin/settings" || pathname.startsWith("/admin/settings/");
   const navItems = isAdmin
     ? [
-        { label: "Dashboard", path: "/admin", active: path === "/admin", icon: "dashboard" },
-        { label: "Users", path: "/admin", active: path === "/admin", icon: "users" },
-        { label: "Notifications", path: "/notifications", active: path === "/notifications", icon: "notifications" },
-        { label: "System Settings", path: "/settings", active: path === "/settings", icon: "sliders" },
-        { label: "Settings", path: "/settings", active: path === "/settings", icon: "settings" },
+        { label: "Dashboard", path: "/admin/dashboard", active: isAdminDashboardRoute(path), icon: "dashboard" },
+        { label: "Users", path: "/admin/users", active: isUsersRoute(path), icon: "users" },
+        { label: "Notifications", path: "/admin/notifications", active: isNotificationsRoute(path), icon: "notifications" },
+        { label: "Settings", path: "/admin/settings", active: isSettingsRoute(path), icon: "settings" },
       ]
     : [
         { label: "Dashboard", path: "/dashboard", active: path === "/dashboard", icon: "dashboard" },
