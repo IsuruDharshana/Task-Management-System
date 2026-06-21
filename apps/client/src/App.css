@@ -3022,14 +3022,15 @@ h3 {
 }
 
 .attention-list .admin-attention-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  display: flex;
+  justify-content: space-between;
   align-items: start;
-  gap: 12px;
+  gap: 16px;
 }
 
 .admin-attention-user {
   min-width: 0;
+  flex: 1;
   display: grid;
   gap: 3px;
 }
@@ -3054,22 +3055,10 @@ h3 {
 
 .attention-badges {
   display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  align-items: flex-start;
-  min-width: 0;
-  max-width: min(100%, 180px);
-}
-
-@media (max-width: 560px) {
-  .attention-list .admin-attention-row {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .attention-list .admin-attention-row .attention-badges {
-    justify-content: flex-start;
-  }
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: 8px;
+  align-items: flex-end;
 }
 
 .role-distribution {
