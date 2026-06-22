@@ -64,8 +64,7 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
       setMembers(loadedMembers);
       setTasks(tasksData.tasks || []);
 
-      const loadedCurrentMember = loadedMembers.find((member) => member.userId === currentUser.id);
-      if (loadedCurrentMember?.projectRole === "project_manager") {
+      if (projectData.project.currentUserProjectRole === "project_manager") {
         const eligibleData = await api.projects.listEligibleMembers(projectId);
         setEligibleUsers(eligibleData.users || []);
       } else {
@@ -92,16 +91,26 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
   useEffect(() => {
     if (!socket) return;
 
-    const handleProjectUpdated = (payload: { projectId?: string }) => {
-      if (payload.projectId === projectId) {
+    const handleProjectEvent = (payload: { projectId?: string; related_project_id?: string }) => {
+      const relatedProjectId = payload.related_project_id || payload.projectId;
+      if (relatedProjectId === projectId) {
         fetchData();
       }
     };
 
-    socket.on("project:updated", handleProjectUpdated);
+    const refreshEvents = [
+      "project:updated",
+      "task:created",
+      "task:updated",
+      "task:deleted",
+      "comment:created",
+      "attachment:created",
+    ];
+
+    refreshEvents.forEach((eventName) => socket.on(eventName, handleProjectEvent));
 
     return () => {
-      socket.off("project:updated", handleProjectUpdated);
+      refreshEvents.forEach((eventName) => socket.off(eventName, handleProjectEvent));
     };
   }, [socket, projectId, fetchData]);
 
@@ -126,11 +135,8 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
     );
   }
 
-  // Find if current user is a project manager of this project
-  const currentMember = members.find((m) => m.userId === currentUser.id);
-  const isProjectPM =
-    currentUser.role === "project_manager" &&
-    (project.createdBy === currentUser.id || currentMember?.projectRole === "project_manager");
+  // Project-specific permissions come from membership context, not the global user role.
+  const isProjectPM = project.currentUserProjectRole === "project_manager";
   const selectedEligibleUser = eligibleUsers.find((user) => user.id === addUserId);
   const selectedUserIsCollaborator = selectedEligibleUser?.role === "collaborator";
   const projectManager = members.find((member) => member.projectRole === "project_manager");

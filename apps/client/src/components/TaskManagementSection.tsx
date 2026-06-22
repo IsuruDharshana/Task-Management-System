@@ -181,10 +181,12 @@ export default function TaskManagementSection({
       }, 250);
     };
 
-    const handleTaskEvent = (payload: { projectId?: string; taskId?: string }) => {
-      if (payload.projectId !== projectId) return;
+    const handleTaskEvent = (payload: { projectId?: string; related_project_id?: string; taskId?: string; related_task_id?: string }) => {
+      const relatedProjectId = payload.related_project_id || payload.projectId;
+      const relatedTaskId = payload.related_task_id || payload.taskId;
+      if (relatedProjectId !== projectId) return;
 
-      if (payload.taskId && editingTask?.id === payload.taskId) {
+      if (relatedTaskId && editingTask?.id === relatedTaskId) {
         setEditingTask(null);
         closeForms();
       }
@@ -192,15 +194,12 @@ export default function TaskManagementSection({
       scheduleRefresh();
     };
 
-    socket.on("task:created", handleTaskEvent);
-    socket.on("task:updated", handleTaskEvent);
-    socket.on("task:deleted", handleTaskEvent);
+    const refreshEvents = ["task:created", "task:updated", "task:deleted", "comment:created", "attachment:created"];
+    refreshEvents.forEach((eventName) => socket.on(eventName, handleTaskEvent));
 
     return () => {
       window.clearTimeout(refreshTimer);
-      socket.off("task:created", handleTaskEvent);
-      socket.off("task:updated", handleTaskEvent);
-      socket.off("task:deleted", handleTaskEvent);
+      refreshEvents.forEach((eventName) => socket.off(eventName, handleTaskEvent));
     };
   }, [socket, projectId, editingTask?.id]);
 

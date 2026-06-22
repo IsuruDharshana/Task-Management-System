@@ -71,14 +71,20 @@ export default function ProjectsList({ currentUser }: ProjectsListProps) {
       fetchProjects();
     };
 
-    socket.on("project:updated", handleProjectUpdated);
-    socket.on("task:created", handleProjectUpdated);
-    socket.on("task:updated", handleProjectUpdated);
+    const refreshEvents = [
+      "notification:new",
+      "project:updated",
+      "task:created",
+      "task:updated",
+      "task:deleted",
+      "comment:created",
+      "attachment:created",
+    ];
+
+    refreshEvents.forEach((eventName) => socket.on(eventName, handleProjectUpdated));
 
     return () => {
-      socket.off("project:updated", handleProjectUpdated);
-      socket.off("task:created", handleProjectUpdated);
-      socket.off("task:updated", handleProjectUpdated);
+      refreshEvents.forEach((eventName) => socket.off(eventName, handleProjectUpdated));
     };
   }, [socket, currentUser.role, fetchProjects]);
 

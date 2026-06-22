@@ -132,16 +132,21 @@ export default function Dashboard({ currentUser }: DashboardProps) {
       loadDashboard();
     };
 
-    socket.on("dashboard:summary-updated", handleSummaryUpdated);
-    socket.on("project:updated", handleSummaryUpdated);
-    socket.on("task:created", handleSummaryUpdated);
-    socket.on("task:updated", handleSummaryUpdated);
+    const refreshEvents = [
+      "dashboard:summary-updated",
+      "notification:new",
+      "project:updated",
+      "task:created",
+      "task:updated",
+      "task:deleted",
+      "comment:created",
+      "attachment:created",
+    ];
+
+    refreshEvents.forEach((eventName) => socket.on(eventName, handleSummaryUpdated));
 
     return () => {
-      socket.off("dashboard:summary-updated", handleSummaryUpdated);
-      socket.off("project:updated", handleSummaryUpdated);
-      socket.off("task:created", handleSummaryUpdated);
-      socket.off("task:updated", handleSummaryUpdated);
+      refreshEvents.forEach((eventName) => socket.off(eventName, handleSummaryUpdated));
     };
   }, [socket, currentUser.role, loadDashboard]);
 

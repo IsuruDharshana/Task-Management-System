@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { api, APIError } from "../services/api";
 import type { TaskAttachment, User } from "../services/api";
+import { useSocket } from "../context/SocketContext";
 import { Button, ConfirmDialog, EmptyState, SkeletonList, UserAvatar } from "./ui";
 
 interface TaskAttachmentsSectionProps {
@@ -59,6 +60,7 @@ export default function TaskAttachmentsSection({
   currentUser,
   isProjectPM,
 }: TaskAttachmentsSectionProps) {
+  const { socket } = useSocket();
   const [attachments, setAttachments] = useState<TaskAttachment[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [displayName, setDisplayName] = useState("");
@@ -87,6 +89,23 @@ export default function TaskAttachmentsSection({
   useEffect(() => {
     loadAttachments();
   }, [taskId]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleAttachmentCreated = (payload: { taskId?: string; related_task_id?: string }) => {
+      const relatedTaskId = payload.related_task_id || payload.taskId;
+      if (relatedTaskId === taskId) {
+        loadAttachments();
+      }
+    };
+
+    socket.on("attachment:created", handleAttachmentCreated);
+
+    return () => {
+      socket.off("attachment:created", handleAttachmentCreated);
+    };
+  }, [socket, taskId]);
 
   const validateFile = (file: File | null): file is File => {
     if (!file) {

@@ -1,5 +1,4 @@
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://task-management-system-l6hq.onrender.com/api";
-export const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
 
 export class APIError extends Error {
   code: string;
@@ -73,6 +72,7 @@ export interface Project {
   updatedBy: string | null;
   createdAt: string;
   updatedAt: string;
+  currentUserProjectRole: "project_manager" | "collaborator" | null;
 }
 
 export interface Member {
@@ -159,13 +159,19 @@ export interface ActivityLog {
 }
 
 export type NotificationType =
+  | "task_created"
   | "task_assigned"
   | "task_updated"
   | "task_status_changed"
+  | "task_deleted"
   | "comment_added"
+  | "attachment_uploaded"
   | "deadline_approaching"
   | "admin_update"
-  | "project_updated";
+  | "project_updated"
+  | "project_deleted"
+  | "project_member_added"
+  | "project_member_removed";
 
 export interface NotificationDTO {
   id: string;

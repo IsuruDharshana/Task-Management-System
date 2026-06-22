@@ -4,6 +4,8 @@ import { AppError } from "../utils/appError.js";
 import { logActivity } from "./activityLogService.js";
 import {
   notifyProjectMemberAdded,
+  notifyProjectMemberRemoved,
+  notifyProjectDeleted,
   notifyProjectUpdated,
 } from "./realtimeEventService.js";
 
@@ -63,6 +65,7 @@ export interface ProjectDTO {
   updatedBy: string | null;
   createdAt: string;
   updatedAt: string;
+  currentUserProjectRole: string | null;
 }
 
 export interface MemberDTO {
@@ -87,7 +90,7 @@ export interface EligibleMemberDTO {
 
 // Mappers
 
-function mapProject(row: ProjectRow): ProjectDTO {
+function mapProject(row: ProjectRow, currentUserProjectRole: string | null = null): ProjectDTO {
   return {
     id: row.id,
     name: row.name,
@@ -99,6 +102,7 @@ function mapProject(row: ProjectRow): ProjectDTO {
     updatedBy: row.updated_by,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    currentUserProjectRole,
   };
 }
 
@@ -185,6 +189,12 @@ export async function isProjectManagerForProject(projectId: string, userId: stri
 }
 
 export async function requireProjectManagerForProject(projectId: string, userId: string): Promise<void> {
+  const project = await getActiveProject(projectId);
+
+  if (project.created_by === userId) {
+    return;
+  }
+
   const isPM = await isProjectManagerForProject(projectId, userId);
 
   if (!isPM) {
@@ -393,7 +403,7 @@ export async function createProject(input: CreateProjectInput, user: AuthUser): 
     metadata: { projectId: project.id, projectName: project.name },
   });
 
-  return mapProject(project);
+  return mapProject(project, "project_manager");
 }
 
 export async function listProjects(user: AuthUser): Promise<ProjectDTO[]> {
@@ -402,7 +412,7 @@ export async function listProjects(user: AuthUser): Promise<ProjectDTO[]> {
   // Get project IDs where user is an active member
   const { data: memberships, error: memberError } = await supabaseAdmin
     .from("project_members")
-    .select("project_id")
+    .select("project_id, project_role")
     .eq("user_id", user.id)
     .is("removed_at", null);
 
@@ -410,11 +420,39 @@ export async function listProjects(user: AuthUser): Promise<ProjectDTO[]> {
     throw new AppError(500, "DATABASE_ERROR", "Failed to load projects.");
   }
 
-  if (!memberships || memberships.length === 0) {
+  if ((!memberships || memberships.length === 0) && user.role !== "project_manager") {
     return [];
   }
 
-  const projectIds = memberships.map((m) => m.project_id);
+  const projectRolesById = new Map<string, string>();
+  for (const membership of memberships ?? []) {
+    projectRolesById.set(
+      membership.project_id,
+      membership.project_role === "project_manager" ? "project_manager" : "collaborator"
+    );
+  }
+
+  if (user.role === "project_manager") {
+    const { data: createdProjects, error: createdProjectError } = await supabaseAdmin
+      .from("projects")
+      .select("id")
+      .eq("created_by", user.id)
+      .is("deleted_at", null);
+
+    if (createdProjectError) {
+      throw new AppError(500, "DATABASE_ERROR", "Failed to load projects.");
+    }
+
+    for (const project of createdProjects ?? []) {
+      projectRolesById.set(project.id, "project_manager");
+    }
+  }
+
+  const projectIds = [...projectRolesById.keys()];
+
+  if (projectIds.length === 0) {
+    return [];
+  }
 
   const { data, error } = await supabaseAdmin
     .from("projects")
@@ -427,7 +465,12 @@ export async function listProjects(user: AuthUser): Promise<ProjectDTO[]> {
     throw new AppError(500, "DATABASE_ERROR", "Failed to load projects.");
   }
 
-  return ((data ?? []) as ProjectRow[]).map(mapProject);
+  return ((data ?? []) as ProjectRow[]).map((project) =>
+    mapProject(
+      project,
+      project.created_by === user.id ? "project_manager" : projectRolesById.get(project.id) ?? null
+    )
+  );
 }
 
 export async function getProject(projectId: string, user: AuthUser): Promise<ProjectDTO> {
@@ -435,13 +478,20 @@ export async function getProject(projectId: string, user: AuthUser): Promise<Pro
 
   const project = await getActiveProject(projectId);
 
-  const isMember = await isProjectMember(projectId, user.id);
+  const isMember = project.created_by === user.id || (await isProjectMember(projectId, user.id));
 
   if (!isMember) {
     throw new AppError(404, "PROJECT_NOT_FOUND", "Project not found.");
   }
 
-  return mapProject(project);
+  return mapProject(
+    project,
+    project.created_by === user.id
+      ? "project_manager"
+      : (await isProjectManagerForProject(projectId, user.id))
+        ? "project_manager"
+        : "collaborator"
+  );
 }
 
 interface UpdateProjectInput {
@@ -533,7 +583,7 @@ export async function updateProject(
     changedFields
   );
 
-  return mapProject(updatedProject);
+  return mapProject(updatedProject, "project_manager");
 }
 
 interface DeleteProjectInput {
@@ -574,15 +624,21 @@ export async function deleteProject(
     entityId: projectId,
     metadata: { projectId, projectName: project.name },
   });
+
+  await notifyProjectDeleted({
+    projectId,
+    projectName: project.name,
+    actorUserId: user.id,
+  });
 }
 
 // Member CRUD
 
 export async function listMembers(projectId: string, user: AuthUser): Promise<MemberDTO[]> {
   requireNonAdmin(user);
-  await getActiveProject(projectId);
+  const project = await getActiveProject(projectId);
 
-  const isMember = await isProjectMember(projectId, user.id);
+  const isMember = project.created_by === user.id || (await isProjectMember(projectId, user.id));
 
   if (!isMember) {
     throw new AppError(404, "PROJECT_NOT_FOUND", "Project not found.");
@@ -915,4 +971,13 @@ export async function removeMember(
       projectRole: member.project_role,
     },
   });
+
+  await notifyProjectMemberRemoved(
+    {
+      projectId,
+      projectName: project.name,
+      actorUserId: user.id,
+    },
+    member.user_id
+  );
 }

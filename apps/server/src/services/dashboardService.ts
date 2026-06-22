@@ -11,6 +11,7 @@ interface ProjectIdRow {
 
 interface ProjectMemberProjectRow {
   project_id: string;
+  project_role?: string;
 }
 
 interface TaskAssignmentRow {
@@ -108,6 +109,69 @@ async function getActiveProjectIds(user: AuthUser): Promise<string[]> {
   }
 
   return ((activeProjects ?? []) as ProjectIdRow[]).map((project) => project.id);
+}
+
+async function getActiveProjectRoles(user: AuthUser): Promise<Map<string, "project_manager" | "collaborator">> {
+  const { data: memberships, error: memberError } = await supabaseAdmin
+    .from("project_members")
+    .select("project_id, project_role")
+    .eq("user_id", user.id)
+    .is("removed_at", null);
+
+  if (memberError) {
+    throw new AppError(500, "DATABASE_ERROR", "Failed to load dashboard projects.");
+  }
+
+  const rolesByProjectId = new Map<string, "project_manager" | "collaborator">();
+
+  for (const membership of (memberships ?? []) as ProjectMemberProjectRow[]) {
+    rolesByProjectId.set(
+      membership.project_id,
+      membership.project_role === "project_manager" ? "project_manager" : "collaborator"
+    );
+  }
+
+  if (user.role === "project_manager") {
+    const { data: createdProjects, error: projectError } = await supabaseAdmin
+      .from("projects")
+      .select("id")
+      .eq("created_by", user.id)
+      .is("deleted_at", null);
+
+    if (projectError) {
+      throw new AppError(500, "DATABASE_ERROR", "Failed to load dashboard projects.");
+    }
+
+    for (const project of (createdProjects ?? []) as ProjectIdRow[]) {
+      rolesByProjectId.set(project.id, "project_manager");
+    }
+  }
+
+  const projectIds = [...rolesByProjectId.keys()];
+
+  if (projectIds.length === 0) {
+    return rolesByProjectId;
+  }
+
+  const { data: activeProjects, error } = await supabaseAdmin
+    .from("projects")
+    .select("id")
+    .in("id", projectIds)
+    .is("deleted_at", null);
+
+  if (error) {
+    throw new AppError(500, "DATABASE_ERROR", "Failed to load dashboard projects.");
+  }
+
+  const activeProjectIds = new Set(((activeProjects ?? []) as ProjectIdRow[]).map((project) => project.id));
+
+  for (const projectId of projectIds) {
+    if (!activeProjectIds.has(projectId)) {
+      rolesByProjectId.delete(projectId);
+    }
+  }
+
+  return rolesByProjectId;
 }
 
 async function getAssignedTaskIds(userId: string): Promise<string[]> {
@@ -213,6 +277,15 @@ export async function getDashboardSummary(user: AuthUser): Promise<DashboardSumm
     return countTaskSummary(activeProjectIds.length, myTasks, myTasks, unreadNotifications);
   }
 
-  const projectTasks = await getActiveTasksByProjectIds(activeProjectIds);
+  const projectRoles = await getActiveProjectRoles(user);
+  const managedProjectIds = [...projectRoles.entries()]
+    .filter(([, role]) => role === "project_manager")
+    .map(([projectId]) => projectId);
+  const collaboratorProjectIds = [...projectRoles.entries()]
+    .filter(([, role]) => role === "collaborator")
+    .map(([projectId]) => projectId);
+  const managedProjectTasks = await getActiveTasksByProjectIds(managedProjectIds);
+  const collaboratorProjectTasks = myTasks.filter((task) => collaboratorProjectIds.includes(task.project_id));
+  const projectTasks = [...managedProjectTasks, ...collaboratorProjectTasks];
   return countTaskSummary(activeProjectIds.length, projectTasks, myTasks, unreadNotifications);
 }

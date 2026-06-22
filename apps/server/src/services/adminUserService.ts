@@ -5,6 +5,7 @@ import type { UserRole } from "../types/auth.js";
 import { AppError } from "../utils/appError.js";
 import { generateTemporaryPassword, hashPassword } from "../utils/password.js";
 import { logActivity } from "./activityLogService.js";
+import { createNotification } from "./notificationService.js";
 
 type AdminCreatableRole = "project_manager" | "collaborator";
 type UserStatusFilter = "active" | "inactive" | "all";
@@ -200,6 +201,32 @@ function assertNotSelf(targetUserId: string, adminUserId: string, code: string, 
   }
 }
 
+async function safeNotifyAdminUpdate(
+  user: AdminUser,
+  title: string,
+  message: string,
+  adminUserId: string,
+  action: string
+): Promise<void> {
+  try {
+    await createNotification({
+      userId: user.id,
+      type: "admin_update",
+      title,
+      message,
+      entityType: "user",
+      entityId: user.id,
+      metadata: {
+        targetUserId: user.id,
+        action,
+        actorUserId: adminUserId,
+      },
+    });
+  } catch (notificationError) {
+    console.error("Failed to create admin update notification.", notificationError);
+  }
+}
+
 export async function listUsers(params: ListUsersParams): Promise<AdminUser[]> {
   const search = normalizeSearch(params.search);
   const role = normalizeRoleFilter(params.role);
@@ -302,6 +329,14 @@ export async function createUserByAdmin(
     },
   });
 
+  await safeNotifyAdminUpdate(
+    user,
+    "Account created",
+    "Your Veyra account was created by an administrator.",
+    adminUserId,
+    "admin_user_created"
+  );
+
   return {
     user,
     emailSent,
@@ -370,6 +405,14 @@ export async function updateUserByAdmin(
     },
   });
 
+  await safeNotifyAdminUpdate(
+    user,
+    "Account updated",
+    "Your Veyra account details were updated by an administrator.",
+    adminUserId,
+    "admin_user_updated"
+  );
+
   return user;
 }
 
@@ -411,6 +454,14 @@ export async function deactivateUserByAdmin(
     metadata: { targetUserId: user.id, targetUserName: user.name, targetUserRole: user.role },
   });
 
+  await safeNotifyAdminUpdate(
+    user,
+    "Account deactivated",
+    "Your Veyra account was deactivated by an administrator.",
+    adminUserId,
+    "admin_user_deactivated"
+  );
+
   return user;
 }
 
@@ -440,6 +491,14 @@ export async function reactivateUserByAdmin(userId: string, adminUserId: string)
     entityId: user.id,
     metadata: { targetUserId: user.id, targetUserName: user.name, targetUserRole: user.role },
   });
+
+  await safeNotifyAdminUpdate(
+    user,
+    "Account reactivated",
+    "Your Veyra account was reactivated by an administrator.",
+    adminUserId,
+    "admin_user_reactivated"
+  );
 
   return user;
 }
@@ -497,6 +556,14 @@ export async function resetUserPasswordByAdmin(
     entityId: user.id,
     metadata: { targetUserId: user.id, targetUserName: user.name, targetUserRole: user.role },
   });
+
+  await safeNotifyAdminUpdate(
+    user,
+    "Password reset",
+    "An administrator reset your Veyra password.",
+    adminUserId,
+    "admin_user_password_reset"
+  );
 
   return {
     user,

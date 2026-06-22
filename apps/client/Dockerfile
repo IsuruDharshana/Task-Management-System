@@ -2,8 +2,10 @@ FROM node:22-bookworm-slim AS build
 
 WORKDIR /app
 
-ARG VITE_API_BASE_URL=https://task-management-system-l6hq.onrender.com/api
+ARG VITE_API_BASE_URL=http://localhost:5000/api
+ARG VITE_SOCKET_URL=http://localhost:5000
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+ENV VITE_SOCKET_URL=$VITE_SOCKET_URL
 
 COPY package*.json ./
 COPY apps/client/package.json ./apps/client/package.json
