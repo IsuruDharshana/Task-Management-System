@@ -13,6 +13,8 @@ import notificationRoutes from "./routes/notificationRoutes.js";
 import projectRoutes from "./routes/projectRoutes.js";
 import taskRoutes from "./routes/taskRoutes.js";
 import { errorHandler } from "./middlewares/errorHandler.js";
+import swaggerUi from "swagger-ui-express";
+import { swaggerSpec } from "./config/swagger.js";
 
 const app = express();
 
@@ -31,6 +33,27 @@ app.use(
 app.use(express.json());
 app.use(cookieParser());
 
+/**
+ * @openapi
+ * /health:
+ *   get:
+ *     tags: [Health]
+ *     summary: API liveness check
+ *     security: []
+ *     responses:
+ *       200:
+ *         description: API is running
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: ok
+ *                 message:
+ *                   type: string
+ */
 app.get("/api/health", (_req, res) => {
   res.status(200).json({
     status: "ok",
@@ -38,6 +61,29 @@ app.get("/api/health", (_req, res) => {
   });
 });
 
+/**
+ * @openapi
+ * /health/db:
+ *   get:
+ *     tags: [Health]
+ *     summary: Database connectivity check
+ *     security: []
+ *     responses:
+ *       200:
+ *         description: Database reachable
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: ok
+ *                 message:
+ *                   type: string
+ *       500:
+ *         description: Database unreachable
+ */
 app.get("/api/health/db", async (_req, res) => {
   const { error } = await supabase
     .from("app_users")
@@ -66,6 +112,8 @@ app.use("/api/comments", commentRoutes);
 app.use("/api/attachments", attachmentRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.use(errorHandler);
 
