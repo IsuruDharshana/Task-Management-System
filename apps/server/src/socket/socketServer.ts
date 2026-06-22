@@ -8,7 +8,12 @@ let ioInstance: Server | null = null;
 export function initializeSocketServer(httpServer: HttpServer): Server {
   const io = new Server(httpServer, {
     cors: {
-      origin: env.clientUrl,
+      origin: [
+        "https://veyratms.site",
+        "https://www.veyratms.site",
+        "https://task-management-system-client.vercel.app",
+        "http://localhost:5173",
+      ],
       credentials: true,
     },
   });
