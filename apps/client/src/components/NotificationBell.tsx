@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { NotificationDTO } from "../services/api";
+import { getNotificationNavigationPath } from "../services/notificationNavigation";
 import { useNotifications } from "../context/NotificationContext";
 import { useRouter } from "./Router";
 import { Button, SkeletonNotificationList } from "./ui";
@@ -23,25 +24,28 @@ function formatNotificationTime(value: string): string {
   }).format(new Date(value));
 }
 
-function getProjectId(notification: NotificationDTO): string | null {
-  const projectId = notification.metadata?.projectId;
-  return typeof projectId === "string" && projectId ? projectId : null;
-}
-
 function getNotificationIcon(type: NotificationDTO["type"]): string {
   switch (type) {
+    case "task_created":
     case "task_assigned":
       return "A";
     case "task_status_changed":
     case "task_updated":
       return "S";
+    case "task_deleted":
+      return "T";
     case "comment_added":
       return "C";
+    case "attachment_uploaded":
+      return "F";
     case "deadline_approaching":
       return "D";
     case "admin_update":
       return "U";
     case "project_updated":
+    case "project_deleted":
+    case "project_member_added":
+    case "project_member_removed":
       return "P";
     default:
       return "N";
@@ -81,13 +85,8 @@ export default function NotificationBell() {
       await markAsRead(notification.id);
     }
 
-    if (notification.entityType === "task") {
-      const projectId = getProjectId(notification);
-      if (projectId) {
-        navigate(`/projects/${projectId}`);
-        setOpen(false);
-      }
-    }
+    navigate(getNotificationNavigationPath(notification));
+    setOpen(false);
   };
 
   const handleViewAll = () => {

@@ -3,8 +3,8 @@ import type { AuthUser } from "../types/auth.js";
 import { AppError } from "../utils/appError.js";
 import { logActivity } from "./activityLogService.js";
 import {
-  broadcastTaskCreated,
-  broadcastTaskDeleted,
+  notifyTaskCreated,
+  notifyTaskDeleted,
   notifyTaskAssigned,
   notifyTaskStatusChanged,
   notifyTaskUpdated,
@@ -13,6 +13,7 @@ import {
 type TaskPriority = "low" | "medium" | "high";
 type TaskStatus = "to_do" | "in_progress" | "completed";
 type TaskSortBy = "due_date" | "priority" | "created_at";
+type ProjectAccessRole = "project_manager" | "collaborator";
 
 interface ProjectRow {
   id: string;
@@ -346,6 +347,32 @@ async function canManageProject(projectId: string, userId: string): Promise<bool
   return !!data;
 }
 
+async function getProjectAccessRole(projectId: string, userId: string): Promise<ProjectAccessRole | null> {
+  const project = await getActiveProject(projectId);
+
+  if (project.created_by === userId) {
+    return "project_manager";
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("project_members")
+    .select("project_role")
+    .eq("project_id", projectId)
+    .eq("user_id", userId)
+    .is("removed_at", null)
+    .maybeSingle();
+
+  if (error) {
+    throw new AppError(500, "DATABASE_ERROR", "Failed to check project membership.");
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  return data.project_role === "project_manager" ? "project_manager" : "collaborator";
+}
+
 async function requireCanManageProject(projectId: string, userId: string): Promise<void> {
   const canManage = await canManageProject(projectId, userId);
 
@@ -490,13 +517,15 @@ async function createActiveAssignment(task: TaskRow, userId: string, assignedBy:
 async function getVisibleTask(taskId: string, user: AuthUser): Promise<TaskRow> {
   requireNonAdmin(user);
   const task = await getActiveTask(taskId);
+  const accessRole = await getProjectAccessRole(task.project_id, user.id);
 
-  if (user.role === "project_manager") {
-    await requireCanManageProject(task.project_id, user.id);
-    return task;
+  if (!accessRole) {
+    throw new AppError(403, "FORBIDDEN", "You are not an active member of this project.");
   }
 
-  await requireActiveProjectMembership(task.project_id, user.id);
+  if (accessRole === "project_manager") {
+    return task;
+  }
 
   const isAssigned = await isTaskAssignedToUser(task.id, user.id);
 
@@ -524,14 +553,17 @@ export async function listTasks(
       : "created_at";
   const sortOrder = query.sortOrder === "asc" ? "asc" : "desc";
   const search = typeof query.search === "string" ? query.search.trim() : "";
+  const accessRole = await getProjectAccessRole(projectId, user.id);
 
   let assignmentFilterUserId: string | undefined;
 
-  if (user.role === "project_manager") {
-    await requireCanManageProject(projectId, user.id);
+  if (!accessRole) {
+    throw new AppError(403, "FORBIDDEN", "You are not an active member of this project.");
+  }
+
+  if (accessRole === "project_manager") {
     assignmentFilterUserId = assigneeId;
   } else {
-    await requireActiveProjectMembership(projectId, user.id);
     assignmentFilterUserId = user.id;
   }
 
@@ -649,18 +681,7 @@ export async function createTask(
     metadata: { projectId, projectName: project.name, taskId: task.id, taskTitle: task.title },
   });
 
-  await notifyTaskAssigned(
-    {
-      taskId: task.id,
-      taskTitle: task.title,
-      projectId,
-      projectName: project.name,
-      actorUserId: user.id,
-    },
-    assigneeIds,
-    { emitTaskUpdated: false }
-  );
-  await broadcastTaskCreated(
+  await notifyTaskCreated(
     {
       taskId: task.id,
       taskTitle: task.title,
@@ -683,10 +704,15 @@ export async function getTask(taskId: string, user: AuthUser): Promise<TaskDTO> 
 export async function updateTask(taskId: string, input: UpdateTaskInput, user: AuthUser): Promise<TaskDTO> {
   requireNonAdmin(user);
   const task = await getActiveTask(taskId);
+  const accessRole = await getProjectAccessRole(task.project_id, user.id);
+
+  if (!accessRole) {
+    throw new AppError(403, "FORBIDDEN", "You are not an active member of this project.");
+  }
 
   const updates: Record<string, unknown> = {};
 
-  if (user.role === "collaborator") {
+  if (accessRole === "collaborator") {
     const restrictedFields = COLLABORATOR_RESTRICTED_PATCH_FIELDS.filter((field) =>
       Object.prototype.hasOwnProperty.call(input, field)
     );
@@ -696,8 +722,6 @@ export async function updateTask(taskId: string, input: UpdateTaskInput, user: A
         restrictedFields,
       });
     }
-
-    await requireActiveProjectMembership(task.project_id, user.id);
 
     const isAssigned = await isTaskAssignedToUser(task.id, user.id);
 
@@ -715,8 +739,6 @@ export async function updateTask(taskId: string, input: UpdateTaskInput, user: A
       updates.completed_at = status === "completed" ? new Date().toISOString() : null;
     }
   } else {
-    await requireCanManageProject(task.project_id, user.id);
-
     if (input.title !== undefined) {
       updates.title = validateTitle(input.title);
     }
@@ -908,7 +930,7 @@ export async function deleteTask(taskId: string, input: DeleteTaskInput, user: A
     metadata: { projectId: task.project_id, projectName: project.name, taskId: task.id, taskTitle: task.title },
   });
 
-  await broadcastTaskDeleted({
+  await notifyTaskDeleted({
     taskId: task.id,
     taskTitle: task.title,
     projectId: task.project_id,

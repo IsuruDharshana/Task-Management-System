@@ -23,6 +23,12 @@ interface ProjectEventContext {
   actorUserId: string;
 }
 
+interface AttachmentUploadedContext extends TaskEventContext {
+  attachmentId: string;
+  fileName: string;
+  actorName: string;
+}
+
 interface TaskUpdatedContext extends TaskEventContext {
   changedFields: string[];
 }
@@ -111,6 +117,94 @@ function emitDashboardSummaryUpdated(userIds: string[], payload: Record<string, 
   emitToUsers(userIds, "dashboard:summary-updated", payload);
 }
 
+function eventTimestamp(): string {
+  return new Date().toISOString();
+}
+
+function projectEventPayload(
+  context: ProjectEventContext,
+  eventType: string,
+  extra: Record<string, unknown> = {}
+): Record<string, unknown> {
+  return {
+    type: eventType,
+    eventType,
+    projectId: context.projectId,
+    related_project_id: context.projectId,
+    actorUserId: context.actorUserId,
+    actor_user_id: context.actorUserId,
+    created_at: eventTimestamp(),
+    ...extra,
+  };
+}
+
+function taskEventPayload(
+  context: TaskEventContext,
+  eventType: string,
+  extra: Record<string, unknown> = {}
+): Record<string, unknown> {
+  return {
+    type: eventType,
+    eventType,
+    taskId: context.taskId,
+    related_task_id: context.taskId,
+    projectId: context.projectId,
+    related_project_id: context.projectId,
+    actorUserId: context.actorUserId,
+    actor_user_id: context.actorUserId,
+    created_at: eventTimestamp(),
+    ...extra,
+  };
+}
+
+function taskMetadata(context: TaskEventContext, extra: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    taskId: context.taskId,
+    related_task_id: context.taskId,
+    taskTitle: context.taskTitle,
+    projectId: context.projectId,
+    related_project_id: context.projectId,
+    projectName: context.projectName,
+    actorUserId: context.actorUserId,
+    ...extra,
+  };
+}
+
+function projectMetadata(context: ProjectEventContext, extra: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    projectId: context.projectId,
+    related_project_id: context.projectId,
+    projectName: context.projectName,
+    actorUserId: context.actorUserId,
+    ...extra,
+  };
+}
+
+export async function notifyTaskCreated(
+  context: TaskEventContext,
+  assignedUserIds: string[]
+): Promise<void> {
+  await safeNotify(async () => {
+    const recipients = unique([...(await getProjectManagerRecipients(context.projectId)), ...assignedUserIds]);
+    const notificationRecipients = excludeActor(recipients, context.actorUserId);
+    const payload = taskEventPayload(context, "task_created");
+
+    if (notificationRecipients.length > 0) {
+      await createNotificationsForUsers(notificationRecipients, {
+        type: "task_created",
+        title: "Task created",
+        message: `"${context.taskTitle}" was created in ${context.projectName}.`,
+        entityType: "task",
+        entityId: context.taskId,
+        metadata: taskMetadata(context),
+      });
+    }
+
+    emitToUsers(recipients, "task:created", payload);
+    emitDashboardSummaryUpdated(recipients, payload);
+  });
+}
+
 export async function notifyTaskAssigned(
   context: TaskEventContext,
   assignedUserIds: string[],
@@ -122,12 +216,7 @@ export async function notifyTaskAssigned(
       ...(await getProjectManagerRecipients(context.projectId)),
       ...assignedUserIds,
     ]);
-    const payload = {
-      taskId: context.taskId,
-      projectId: context.projectId,
-      eventType: "task_assigned",
-      actorUserId: context.actorUserId,
-    };
+    const payload = taskEventPayload(context, "task_assigned");
 
     if (notificationRecipients.length > 0) {
       await createNotificationsForUsers(notificationRecipients, {
@@ -136,13 +225,7 @@ export async function notifyTaskAssigned(
         message: `You were assigned to "${context.taskTitle}" in ${context.projectName}.`,
         entityType: "task",
         entityId: context.taskId,
-        metadata: {
-          taskId: context.taskId,
-          taskTitle: context.taskTitle,
-          projectId: context.projectId,
-          projectName: context.projectName,
-          actorUserId: context.actorUserId,
-        },
+        metadata: taskMetadata(context),
       });
     }
 
@@ -159,12 +242,7 @@ export async function broadcastTaskCreated(
 ): Promise<void> {
   await safeNotify(async () => {
     const recipients = unique([...(await getProjectManagerRecipients(context.projectId)), ...assignedUserIds]);
-    const payload = {
-      taskId: context.taskId,
-      projectId: context.projectId,
-      eventType: "task_created",
-      actorUserId: context.actorUserId,
-    };
+    const payload = taskEventPayload(context, "task_created");
 
     emitToUsers(recipients, "task:created", payload);
     emitDashboardSummaryUpdated(recipients, payload);
@@ -179,13 +257,7 @@ export async function notifyTaskStatusChanged(
   await safeNotify(async () => {
     const recipients = await getTaskNotificationRecipients(context.taskId, context.projectId);
     const notificationRecipients = excludeActor(recipients, context.actorUserId);
-    const payload = {
-      taskId: context.taskId,
-      projectId: context.projectId,
-      eventType: "task_status_changed",
-      changedFields: ["status"],
-      actorUserId: context.actorUserId,
-    };
+    const payload = taskEventPayload(context, "task_status_changed", { changedFields: ["status"] });
 
     if (notificationRecipients.length > 0) {
       await createNotificationsForUsers(notificationRecipients, {
@@ -194,15 +266,7 @@ export async function notifyTaskStatusChanged(
         message: `"${context.taskTitle}" changed from ${formatTaskStatus(oldStatus)} to ${formatTaskStatus(newStatus)}.`,
         entityType: "task",
         entityId: context.taskId,
-        metadata: {
-          taskId: context.taskId,
-          taskTitle: context.taskTitle,
-          projectId: context.projectId,
-          projectName: context.projectName,
-          oldStatus,
-          newStatus,
-          actorUserId: context.actorUserId,
-        },
+        metadata: taskMetadata(context, { oldStatus, newStatus }),
       });
     }
 
@@ -217,13 +281,7 @@ export async function notifyTaskUpdated(context: TaskUpdatedContext): Promise<vo
   await safeNotify(async () => {
     const recipients = await getTaskNotificationRecipients(context.taskId, context.projectId);
     const notificationRecipients = excludeActor(recipients, context.actorUserId);
-    const payload = {
-      taskId: context.taskId,
-      projectId: context.projectId,
-      eventType: "task_updated",
-      changedFields: context.changedFields,
-      actorUserId: context.actorUserId,
-    };
+    const payload = taskEventPayload(context, "task_updated", { changedFields: context.changedFields });
 
     if (notificationRecipients.length > 0) {
       await createNotificationsForUsers(notificationRecipients, {
@@ -232,14 +290,7 @@ export async function notifyTaskUpdated(context: TaskUpdatedContext): Promise<vo
         message: `"${context.taskTitle}" was updated.`,
         entityType: "task",
         entityId: context.taskId,
-        metadata: {
-          taskId: context.taskId,
-          taskTitle: context.taskTitle,
-          projectId: context.projectId,
-          projectName: context.projectName,
-          changedFields: context.changedFields,
-          actorUserId: context.actorUserId,
-        },
+        metadata: taskMetadata(context, { changedFields: context.changedFields }),
       });
     }
 
@@ -251,28 +302,29 @@ export async function notifyTaskUpdated(context: TaskUpdatedContext): Promise<vo
 export async function broadcastTaskUpdated(context: TaskUpdatedContext): Promise<void> {
   await safeNotify(async () => {
     const recipients = await getTaskNotificationRecipients(context.taskId, context.projectId);
-    const payload = {
-      taskId: context.taskId,
-      projectId: context.projectId,
-      eventType: "task_updated",
-      changedFields: context.changedFields,
-      actorUserId: context.actorUserId,
-    };
+    const payload = taskEventPayload(context, "task_updated", { changedFields: context.changedFields });
 
     emitToUsers(recipients, "task:updated", payload);
     emitDashboardSummaryUpdated(recipients, payload);
   });
 }
 
-export async function broadcastTaskDeleted(context: TaskEventContext): Promise<void> {
+export async function notifyTaskDeleted(context: TaskEventContext): Promise<void> {
   await safeNotify(async () => {
     const recipients = await getTaskNotificationRecipients(context.taskId, context.projectId);
-    const payload = {
-      taskId: context.taskId,
-      projectId: context.projectId,
-      eventType: "task_deleted",
-      actorUserId: context.actorUserId,
-    };
+    const notificationRecipients = excludeActor(recipients, context.actorUserId);
+    const payload = taskEventPayload(context, "task_deleted");
+
+    if (notificationRecipients.length > 0) {
+      await createNotificationsForUsers(notificationRecipients, {
+        type: "task_deleted",
+        title: "Task deleted",
+        message: `"${context.taskTitle}" was deleted from ${context.projectName}.`,
+        entityType: "task",
+        entityId: context.taskId,
+        metadata: taskMetadata(context),
+      });
+    }
 
     emitToUsers(recipients, "task:deleted", payload);
     emitDashboardSummaryUpdated(recipients, payload);
@@ -285,13 +337,7 @@ export async function notifyCommentAdded(
   await safeNotify(async () => {
     const recipients = await getTaskNotificationRecipients(context.taskId, context.projectId);
     const notificationRecipients = excludeActor(recipients, context.actorUserId);
-    const payload = {
-      taskId: context.taskId,
-      projectId: context.projectId,
-      commentId: context.commentId,
-      eventType: "comment_added",
-      actorUserId: context.actorUserId,
-    };
+    const payload = taskEventPayload(context, "comment_added", { commentId: context.commentId });
 
     if (notificationRecipients.length > 0) {
       await createNotificationsForUsers(notificationRecipients, {
@@ -300,18 +346,35 @@ export async function notifyCommentAdded(
         message: `${context.actorName} commented on "${context.taskTitle}".`,
         entityType: "task",
         entityId: context.taskId,
-        metadata: {
-          taskId: context.taskId,
-          taskTitle: context.taskTitle,
-          projectId: context.projectId,
-          projectName: context.projectName,
-          commentId: context.commentId,
-          actorUserId: context.actorUserId,
-        },
+        metadata: taskMetadata(context, { commentId: context.commentId }),
       });
     }
 
     emitToUsers(recipients, "comment:created", payload);
+  });
+}
+
+export async function notifyAttachmentUploaded(context: AttachmentUploadedContext): Promise<void> {
+  await safeNotify(async () => {
+    const recipients = await getTaskNotificationRecipients(context.taskId, context.projectId);
+    const notificationRecipients = excludeActor(recipients, context.actorUserId);
+    const payload = taskEventPayload(context, "attachment_uploaded", { attachmentId: context.attachmentId });
+
+    if (notificationRecipients.length > 0) {
+      await createNotificationsForUsers(notificationRecipients, {
+        type: "attachment_uploaded",
+        title: "New attachment on task",
+        message: `${context.actorName} uploaded "${context.fileName}" to "${context.taskTitle}".`,
+        entityType: "task",
+        entityId: context.taskId,
+        metadata: taskMetadata(context, {
+          attachmentId: context.attachmentId,
+          fileName: context.fileName,
+        }),
+      });
+    }
+
+    emitToUsers(recipients, "attachment:created", payload);
   });
 }
 
@@ -324,12 +387,7 @@ export async function notifyProjectUpdated(
   await safeNotify(async () => {
     const recipients = await getProjectNotificationRecipients(context.projectId);
     const notificationRecipients = excludeActor(recipients, context.actorUserId);
-    const payload = {
-      projectId: context.projectId,
-      eventType: "project_updated",
-      changedFields,
-      actorUserId: context.actorUserId,
-    };
+    const payload = projectEventPayload(context, "project_updated", { changedFields });
 
     if (notificationRecipients.length > 0) {
       await createNotificationsForUsers(notificationRecipients, {
@@ -338,12 +396,7 @@ export async function notifyProjectUpdated(
         message: `${context.projectName} was updated.`,
         entityType: "project",
         entityId: context.projectId,
-        metadata: {
-          projectId: context.projectId,
-          projectName: context.projectName,
-          changedFields,
-          actorUserId: context.actorUserId,
-        },
+        metadata: projectMetadata(context, { changedFields }),
       });
     }
 
@@ -359,29 +412,68 @@ export async function notifyProjectMemberAdded(
   await safeNotify(async () => {
     const recipients = await getProjectNotificationRecipients(context.projectId);
     const notificationRecipients = excludeActor([memberUserId], context.actorUserId);
-    const payload = {
-      projectId: context.projectId,
-      eventType: "project_member_added",
-      memberUserId,
-      actorUserId: context.actorUserId,
-    };
+    const payload = projectEventPayload(context, "project_member_added", { memberUserId });
 
     if (notificationRecipients.length > 0) {
       await createNotificationsForUsers(notificationRecipients, {
-        type: "project_updated",
+        type: "project_member_added",
         title: "Added to project",
         message: `You were added to project ${context.projectName}.`,
         entityType: "project",
         entityId: context.projectId,
-        metadata: {
-          projectId: context.projectId,
-          projectName: context.projectName,
-          actorUserId: context.actorUserId,
-        },
+        metadata: projectMetadata(context),
       });
     }
 
     emitToUsers(recipients, "project:updated", payload);
     emitDashboardSummaryUpdated(recipients, payload);
+  });
+}
+
+export async function notifyProjectDeleted(context: ProjectEventContext): Promise<void> {
+  await safeNotify(async () => {
+    const recipients = await getProjectNotificationRecipients(context.projectId);
+    const notificationRecipients = excludeActor(recipients, context.actorUserId);
+    const payload = projectEventPayload(context, "project_deleted");
+
+    if (notificationRecipients.length > 0) {
+      await createNotificationsForUsers(notificationRecipients, {
+        type: "project_deleted",
+        title: "Project deleted",
+        message: `${context.projectName} was deleted.`,
+        entityType: "project",
+        entityId: context.projectId,
+        metadata: projectMetadata(context),
+      });
+    }
+
+    emitToUsers(recipients, "project:updated", payload);
+    emitDashboardSummaryUpdated(recipients, payload);
+  });
+}
+
+export async function notifyProjectMemberRemoved(
+  context: ProjectEventContext,
+  memberUserId: string
+): Promise<void> {
+  await safeNotify(async () => {
+    const remainingRecipients = await getProjectNotificationRecipients(context.projectId);
+    const notificationRecipients = excludeActor([memberUserId], context.actorUserId);
+    const eventRecipients = unique([...remainingRecipients, memberUserId]);
+    const payload = projectEventPayload(context, "project_member_removed", { memberUserId });
+
+    if (notificationRecipients.length > 0) {
+      await createNotificationsForUsers(notificationRecipients, {
+        type: "project_member_removed",
+        title: "Removed from project",
+        message: `You were removed from project ${context.projectName}.`,
+        entityType: "project",
+        entityId: context.projectId,
+        metadata: projectMetadata(context),
+      });
+    }
+
+    emitToUsers(eventRecipients, "project:updated", payload);
+    emitDashboardSummaryUpdated(eventRecipients, payload);
   });
 }

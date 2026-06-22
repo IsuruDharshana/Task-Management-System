@@ -8,12 +8,7 @@ let ioInstance: Server | null = null;
 export function initializeSocketServer(httpServer: HttpServer): Server {
   const io = new Server(httpServer, {
     cors: {
-      origin: [
-        "https://veyratms.site",
-        "https://www.veyratms.site",
-        "https://task-management-system-client.vercel.app",
-        "http://localhost:5173",
-      ],
+      origin: env.corsOrigins,
       credentials: true,
     },
   });
@@ -33,6 +28,7 @@ export function initializeSocketServer(httpServer: HttpServer): Server {
 
     if (process.env.NODE_ENV === "development") {
       console.log(`Socket connected: ${socket.id} (${user.id})`);
+      console.log(`Socket joined room: user:${user.id}`);
     }
 
     socket.on("notification:ping", (callback?: (response: { ok: boolean }) => void) => {

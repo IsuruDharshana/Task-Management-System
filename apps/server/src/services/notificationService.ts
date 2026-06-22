@@ -4,13 +4,19 @@ import type { AuthUser } from "../types/auth.js";
 import { AppError } from "../utils/appError.js";
 
 export type NotificationType =
+  | "task_created"
   | "task_assigned"
   | "task_updated"
   | "task_status_changed"
+  | "task_deleted"
   | "comment_added"
+  | "attachment_uploaded"
   | "deadline_approaching"
   | "admin_update"
-  | "project_updated";
+  | "project_updated"
+  | "project_deleted"
+  | "project_member_added"
+  | "project_member_removed";
 
 interface NotificationRow {
   id: string;
@@ -18,6 +24,8 @@ interface NotificationRow {
   type: NotificationType;
   title: string;
   message: string;
+  related_project_id: string | null;
+  related_task_id: string | null;
   entity_type: string | null;
   entity_id: string | null;
   metadata: Record<string, unknown> | null;
@@ -73,18 +81,26 @@ export interface GenerateDeadlineAlertsResult {
 }
 
 const NOTIFICATION_SELECT =
-  "id, user_id, type, title, message, entity_type, entity_id, metadata, read_at, created_at";
+  "id, user_id, type, title, message, related_project_id, related_task_id, entity_type, entity_id, metadata, read_at, created_at";
 const VALID_NOTIFICATION_TYPES: readonly NotificationType[] = [
+  "task_created",
   "task_assigned",
   "task_updated",
   "task_status_changed",
+  "task_deleted",
   "comment_added",
+  "attachment_uploaded",
   "deadline_approaching",
   "admin_update",
   "project_updated",
+  "project_deleted",
+  "project_member_added",
+  "project_member_removed",
 ];
 
 function mapNotification(row: NotificationRow): NotificationDTO {
+  const metadata = row.metadata ?? {};
+
   return {
     id: row.id,
     userId: row.user_id,
@@ -93,7 +109,15 @@ function mapNotification(row: NotificationRow): NotificationDTO {
     message: row.message,
     entityType: row.entity_type,
     entityId: row.entity_id,
-    metadata: row.metadata ?? {},
+    metadata: {
+      ...metadata,
+      ...(row.related_project_id
+        ? { projectId: metadata.projectId ?? row.related_project_id, related_project_id: row.related_project_id }
+        : {}),
+      ...(row.related_task_id
+        ? { taskId: metadata.taskId ?? row.related_task_id, related_task_id: row.related_task_id }
+        : {}),
+    },
     readAt: row.read_at,
     createdAt: row.created_at,
   };
@@ -134,6 +158,67 @@ function normalizeOptionalText(value: string | null | undefined): string | null 
   return value.trim() || null;
 }
 
+function normalizeOptionalUuid(value: unknown, fieldName: string): string | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== "string") {
+    throw new AppError(400, "INVALID_ID", `${fieldName} must be a valid UUID.`);
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  return validateUuid(trimmed, fieldName);
+}
+
+function getMetadataString(metadata: Record<string, unknown> | undefined, ...keys: string[]): string | null {
+  if (!metadata) return null;
+
+  for (const key of keys) {
+    const value = metadata[key];
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return null;
+}
+
+function getRelatedProjectId(input: CreateNotificationInput, entityType: string | null, entityId: string | null): string | null {
+  const metadataProjectId = getMetadataString(input.metadata, "related_project_id", "relatedProjectId", "projectId");
+  if (metadataProjectId) return normalizeOptionalUuid(metadataProjectId, "relatedProjectId");
+  if (entityType === "project") return entityId;
+  return null;
+}
+
+function getRelatedTaskId(input: CreateNotificationInput, entityType: string | null, entityId: string | null): string | null {
+  const metadataTaskId = getMetadataString(input.metadata, "related_task_id", "relatedTaskId", "taskId");
+  if (metadataTaskId) return normalizeOptionalUuid(metadataTaskId, "relatedTaskId");
+  if (entityType === "task") return entityId;
+  return null;
+}
+
+function logNotificationCreateFailure(
+  insertPayload: Record<string, unknown>,
+  error: {
+    code?: string;
+    message?: string;
+    details?: string;
+    hint?: string;
+  } | null
+): void {
+  console.error("Failed to create notification row.", {
+    payload: insertPayload,
+    databaseError: error
+      ? {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+        }
+      : null,
+  });
+}
+
 function normalizeLimit(value: unknown): number {
   if (value === undefined || value === null || value === "") return 20;
 
@@ -159,6 +244,10 @@ function formatDueDate(value: string): string {
 
 async function emitNotificationState(userId: string, notification: NotificationDTO): Promise<void> {
   const unreadCount = await getUnreadNotificationCount(userId);
+
+  if (process.env.NODE_ENV === "development") {
+    console.log(`Notification emitted to user:${userId} (${notification.id})`);
+  }
 
   emitToUser(userId, "notification:new", {
     notification,
@@ -233,28 +322,47 @@ export async function createNotification(input: CreateNotificationInput): Promis
   const title = validateRequiredText(input.title, "title");
   const message = validateRequiredText(input.message, "message");
   const entityType = normalizeOptionalText(input.entityType);
-  const entityId = input.entityId ? validateUuid(input.entityId, "entityId") : null;
+  const entityId = normalizeOptionalUuid(input.entityId, "entityId");
+  const relatedProjectId = getRelatedProjectId(input, entityType, entityId);
+  const relatedTaskId = getRelatedTaskId(input, entityType, entityId);
+  const metadata = {
+    ...(input.metadata ?? {}),
+    ...(relatedProjectId ? { related_project_id: relatedProjectId, projectId: relatedProjectId } : {}),
+    ...(relatedTaskId ? { related_task_id: relatedTaskId, taskId: relatedTaskId } : {}),
+  };
+  const insertPayload = {
+    user_id: userId,
+    type,
+    title,
+    message,
+    related_project_id: relatedProjectId,
+    related_task_id: relatedTaskId,
+    entity_type: entityType,
+    entity_id: entityId,
+    metadata,
+  };
+
+  if (process.env.NODE_ENV === "development") {
+    console.log("Creating notification row.", { payload: insertPayload });
+  }
 
   const { data, error } = await supabaseAdmin
     .from("notifications")
-    .insert({
-      user_id: userId,
-      type,
-      title,
-      message,
-      entity_type: entityType,
-      entity_id: entityId,
-      metadata: input.metadata ?? {},
-    })
+    .insert(insertPayload)
     .select(NOTIFICATION_SELECT)
     .single();
 
   if (error || !data) {
+    logNotificationCreateFailure(insertPayload, error);
     throw new AppError(500, "NOTIFICATION_CREATE_FAILED", "Failed to create notification.");
   }
 
   const notification = mapNotification(data as NotificationRow);
-  await emitNotificationState(userId, notification);
+  try {
+    await emitNotificationState(userId, notification);
+  } catch (emitError) {
+    console.error("Failed to emit notification state.", emitError);
+  }
   return notification;
 }
 
@@ -266,7 +374,16 @@ export async function createNotificationsForUsers(
   const notifications: NotificationDTO[] = [];
 
   for (const userId of uniqueUserIds) {
-    notifications.push(await createNotification({ ...input, userId }));
+    try {
+      notifications.push(await createNotification({ ...input, userId }));
+    } catch (error) {
+      console.error("Failed to create notification for recipient.", {
+        userId,
+        type: input.type,
+        title: input.title,
+        error,
+      });
+    }
   }
 
   return notifications;
@@ -324,8 +441,10 @@ export async function generateApproachingDeadlineNotificationsForUser(
       entityId: task.id,
       metadata: {
         taskId: task.id,
+        related_task_id: task.id,
         taskTitle: task.title,
         projectId: task.project_id,
+        related_project_id: task.project_id,
         projectName: project.name,
         dueDate: task.due_date,
         alertWindowHours,

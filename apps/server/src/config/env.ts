@@ -18,6 +18,10 @@ for (const envName of requiredEnvVariables) {
 export const env = {
   port: process.env.PORT || "5000",
   clientUrl: process.env.CLIENT_URL || process.env.FRONTEND_URL || "http://localhost:5173",
+  corsOrigins: (process.env.CORS_ORIGIN || process.env.CLIENT_URL || process.env.FRONTEND_URL || "http://localhost:5173")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean),
 
   supabaseUrl: process.env.SUPABASE_URL as string,
   supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY as string,

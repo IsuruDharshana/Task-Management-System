@@ -18,12 +18,7 @@ const app = express();
 
 app.use(
   cors({
-    origin: [
-      "https://veyratms.site",
-      "https://www.veyratms.site",
-      "https://task-management-system-client.vercel.app",
-      "http://localhost:5173",
-    ],
+    origin: env.corsOrigins,
     credentials: true,
   })
 );

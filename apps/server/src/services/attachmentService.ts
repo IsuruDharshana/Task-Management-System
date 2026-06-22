@@ -5,6 +5,7 @@ import type { AuthUser } from "../types/auth.js";
 import { AppError } from "../utils/appError.js";
 import { validateUuid } from "./taskService.js";
 import { logActivity } from "./activityLogService.js";
+import { notifyAttachmentUploaded } from "./realtimeEventService.js";
 
 interface TaskRow {
   id: string;
@@ -375,6 +376,17 @@ export async function createTaskAttachment(
       attachmentId: attachment.id,
       fileName: attachment.fileName,
     },
+  });
+
+  await notifyAttachmentUploaded({
+    taskId: task.id,
+    taskTitle: task.title,
+    projectId: task.project_id,
+    projectName: project.name,
+    attachmentId: attachment.id,
+    fileName: attachment.fileName,
+    actorUserId: user.id,
+    actorName: user.name,
   });
 
   return attachment;

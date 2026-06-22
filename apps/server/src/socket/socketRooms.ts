@@ -8,6 +8,10 @@ export function emitToUser(userId: string, eventName: string, payload: unknown):
   const io = getIo();
   if (!io) return;
 
+  if (process.env.NODE_ENV === "development") {
+    console.log(`Socket emit: ${eventName} -> user:${userId}`);
+  }
+
   io.to(getUserRoom(userId)).emit(eventName, payload);
 }
 
