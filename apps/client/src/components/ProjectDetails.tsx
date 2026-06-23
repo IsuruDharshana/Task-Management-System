@@ -12,6 +12,38 @@ interface ProjectDetailsProps {
   currentUser: User;
 }
 
+function getTodayDateString() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function validateProjectDates(
+  startDate: string,
+  dueDate: string,
+  options: { validateStartPast?: boolean; validateDuePast?: boolean } = {}
+): string | null {
+  const today = getTodayDateString();
+  const validateStartPast = options.validateStartPast ?? true;
+  const validateDuePast = options.validateDuePast ?? true;
+
+  if (validateStartPast && startDate && startDate < today) {
+    return "Start date cannot be before today.";
+  }
+
+  if (validateDuePast && dueDate && dueDate < today) {
+    return "Due date cannot be before today.";
+  }
+
+  if (startDate && dueDate && dueDate < startDate) {
+    return "Due date cannot be before start date.";
+  }
+
+  return null;
+}
+
 export default function ProjectDetails({ projectId, currentUser }: ProjectDetailsProps) {
   const { navigate } = useRouter();
   const { socket } = useSocket();
@@ -50,6 +82,7 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
   const [savingMember, setSavingMember] = useState(false);
   const [confirmAction, setConfirmAction] = useState<null | { type: "delete-project" } | { type: "remove-member"; memberId: string; name: string }>(null);
   const [confirmingAction, setConfirmingAction] = useState(false);
+  const todayDate = getTodayDateString();
 
   const fetchData = useCallback(async () => {
     try {
@@ -163,16 +196,45 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
   const handleUpdateProject = async (e: React.FormEvent) => {
     e.preventDefault();
     setProjectUpdateError(null);
+
+    const originalStart = project.startDate ? project.startDate.substring(0, 10) : "";
+    const originalDue = project.dueDate ? project.dueDate.substring(0, 10) : "";
+    const startDateChanged = editStart !== originalStart;
+    const dueDateChanged = editDue !== originalDue;
+
+    const dateError = validateProjectDates(editStart, editDue, {
+      validateStartPast: startDateChanged,
+      validateDuePast: dueDateChanged,
+    });
+    if (dateError) {
+      setProjectUpdateError(dateError);
+      return;
+    }
+
     setUpdatingProject(true);
 
     try {
-      const result = await api.projects.update(projectId, {
+      const updatePayload: {
+        name: string;
+        description: string | null;
+        status: "active" | "completed" | "archived";
+        start_date?: string | null;
+        due_date?: string | null;
+      } = {
         name: editName,
         description: editDesc.trim() || null,
         status: editStatus,
-        start_date: editStart || null,
-        due_date: editDue || null,
-      });
+      };
+
+      if (startDateChanged) {
+        updatePayload.start_date = editStart || null;
+      }
+
+      if (dueDateChanged) {
+        updatePayload.due_date = editDue || null;
+      }
+
+      const result = await api.projects.update(projectId, updatePayload);
       setProject(result.project);
       setIsEditingProject(false);
     } catch (err: any) {
@@ -430,6 +492,7 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
                     type="date"
                     value={editStart}
                     onChange={(e) => setEditStart(e.target.value)}
+                    min={editStart && editStart < todayDate ? editStart : todayDate}
                     disabled={updatingProject}
                   />
                 </div>
@@ -440,6 +503,7 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
                     type="date"
                     value={editDue}
                     onChange={(e) => setEditDue(e.target.value)}
+                    min={editDue && editDue < todayDate ? editDue : todayDate}
                     disabled={updatingProject}
                   />
                 </div>

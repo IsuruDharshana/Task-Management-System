@@ -248,9 +248,39 @@ function validateOptionalDate(value: unknown, fieldName: string): string | undef
   return value;
 }
 
+function getTodayDateString(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function toCalendarDateString(value: string): string {
+  const dateOnlyMatch = value.match(/^(\d{4}-\d{2}-\d{2})/);
+
+  if (dateOnlyMatch) {
+    return dateOnlyMatch[1];
+  }
+
+  const parsed = new Date(value);
+  const year = parsed.getFullYear();
+  const month = String(parsed.getMonth() + 1).padStart(2, "0");
+  const day = String(parsed.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function validateDateNotInPast(date: string | null, errorCode: string, message: string): void {
+  if (!date) return;
+
+  if (toCalendarDateString(date) < getTodayDateString()) {
+    throw new AppError(400, errorCode, message);
+  }
+}
+
 function validateDateRange(startDate: string | undefined | null, dueDate: string | undefined | null): void {
   if (startDate && dueDate) {
-    if (new Date(dueDate) < new Date(startDate)) {
+    if (toCalendarDateString(dueDate) < toCalendarDateString(startDate)) {
       throw new AppError(400, "INVALID_DATE_RANGE", "Due date cannot be before start date.");
     }
   }
@@ -357,6 +387,8 @@ export async function createProject(input: CreateProjectInput, user: AuthUser): 
   const startDate = validateOptionalDate(input.start_date, "start_date") ?? null;
   const dueDate = validateOptionalDate(input.due_date, "due_date") ?? null;
 
+  validateDateNotInPast(startDate, "INVALID_START_DATE", "Start date cannot be before today.");
+  validateDateNotInPast(dueDate, "INVALID_DUE_DATE", "Due date cannot be before today.");
   validateDateRange(startDate, dueDate);
 
   const { data, error } = await supabaseAdmin
@@ -529,10 +561,12 @@ export async function updateProject(
 
   if (input.start_date !== undefined) {
     updates.start_date = validateOptionalDate(input.start_date, "start_date") ?? null;
+    validateDateNotInPast(updates.start_date as string | null, "INVALID_START_DATE", "Start date cannot be before today.");
   }
 
   if (input.due_date !== undefined) {
     updates.due_date = validateOptionalDate(input.due_date, "due_date") ?? null;
+    validateDateNotInPast(updates.due_date as string | null, "INVALID_DUE_DATE", "Due date cannot be before today.");
   }
 
   // Validate date range considering both existing and new values
