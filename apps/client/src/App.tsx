@@ -11,6 +11,7 @@ import AdminPanel from "./components/AdminPanel";
 import ActivityLogSection from "./components/ActivityLogSection";
 import FirstLoginPasswordResetPage from "./components/FirstLoginPasswordResetPage";
 import SettingsPage from "./components/SettingsPage";
+import NotificationToastContainer from "./components/NotificationToastContainer";
 import { SocketProvider } from "./context/SocketContext";
 import { NotificationProvider } from "./context/NotificationContext";
 import { AppLayout, ErrorState, SkeletonAppShell } from "./components/ui";
@@ -195,6 +196,7 @@ function AppContent() {
   return (
     <SocketProvider user={currentUser}>
       <NotificationProvider user={currentUser}>
+        <NotificationToastContainer />
         <AppLayout
           currentUser={currentUser}
           path={path}
