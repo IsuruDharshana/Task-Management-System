@@ -7,6 +7,32 @@ interface CreateProjectProps {
   currentUser: User;
 }
 
+function getTodayDateString() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function validateProjectDates(startDate: string, dueDate: string): string | null {
+  const today = getTodayDateString();
+
+  if (startDate && startDate < today) {
+    return "Start date cannot be before today.";
+  }
+
+  if (dueDate && dueDate < today) {
+    return "Due date cannot be before today.";
+  }
+
+  if (startDate && dueDate && dueDate < startDate) {
+    return "Due date cannot be before start date.";
+  }
+
+  return null;
+}
+
 export default function CreateProject({ currentUser }: CreateProjectProps) {
   const { navigate } = useRouter();
   
@@ -18,6 +44,7 @@ export default function CreateProject({ currentUser }: CreateProjectProps) {
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const todayDate = getTodayDateString();
 
   // Role validation
   if (currentUser.role !== "project_manager") {
@@ -36,6 +63,13 @@ export default function CreateProject({ currentUser }: CreateProjectProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    const dateError = validateProjectDates(startDate, dueDate);
+    if (dateError) {
+      setError(dateError);
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -129,6 +163,7 @@ export default function CreateProject({ currentUser }: CreateProjectProps) {
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
+                min={todayDate}
                 disabled={loading}
               />
             </div>
@@ -140,6 +175,7 @@ export default function CreateProject({ currentUser }: CreateProjectProps) {
                 type="date"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
+                min={todayDate}
                 disabled={loading}
               />
             </div>
