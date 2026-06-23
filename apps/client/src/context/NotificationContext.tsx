@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { api, APIError } from "../services/api";
 import type { NotificationDTO, User } from "../services/api";
 import { useSocket } from "./SocketContext";
+import { playNotificationSound } from "../utils/notificationSound";
 
 interface NotificationNewPayload {
   notification: NotificationDTO;
@@ -20,12 +21,14 @@ interface UnreadCountPayload {
 
 interface NotificationContextValue {
   notifications: NotificationDTO[];
+  notificationToasts: NotificationDTO[];
   unreadCount: number;
   loading: boolean;
   error: string | null;
   refreshNotifications: () => Promise<void>;
   markAsRead: (notificationId: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
+  dismissNotificationToast: (notificationId: string) => void;
 }
 
 const NotificationContext = createContext<NotificationContextValue | null>(null);
@@ -51,6 +54,7 @@ function upsertNotification(current: NotificationDTO[], notification: Notificati
 export function NotificationProvider({ user, children }: { user: User; children: ReactNode }) {
   const { socket } = useSocket();
   const [notifications, setNotifications] = useState<NotificationDTO[]>([]);
+  const [notificationToasts, setNotificationToasts] = useState<NotificationDTO[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -109,6 +113,10 @@ export function NotificationProvider({ user, children }: { user: User; children:
 
     const handleNotificationNew = (payload: NotificationNewPayload) => {
       setNotifications((current) => upsertNotification(current, payload.notification));
+      setNotificationToasts((current) =>
+        [payload.notification, ...current.filter((item) => item.id !== payload.notification.id)].slice(0, 3)
+      );
+      playNotificationSound();
       if (typeof payload.unreadCount === "number") {
         setUnreadCount(payload.unreadCount);
       } else {
@@ -169,17 +177,33 @@ export function NotificationProvider({ user, children }: { user: User; children:
     setUnreadCount(0);
   }, []);
 
+  const dismissNotificationToast = useCallback((notificationId: string) => {
+    setNotificationToasts((current) => current.filter((notification) => notification.id !== notificationId));
+  }, []);
+
   const value = useMemo(
     () => ({
       notifications,
+      notificationToasts,
       unreadCount,
       loading,
       error,
       refreshNotifications,
       markAsRead,
       markAllAsRead,
+      dismissNotificationToast,
     }),
-    [notifications, unreadCount, loading, error, refreshNotifications, markAsRead, markAllAsRead]
+    [
+      notifications,
+      notificationToasts,
+      unreadCount,
+      loading,
+      error,
+      refreshNotifications,
+      markAsRead,
+      markAllAsRead,
+      dismissNotificationToast,
+    ]
   );
 
   return (
