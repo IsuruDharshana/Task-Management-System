@@ -27,6 +27,7 @@ type FilterStatus = "all" | TaskStatus;
 type FilterPriority = "all" | TaskPriority;
 type DueDateFilter = "all" | "due_soon" | "overdue" | "no_due_date";
 type TaskViewMode = "list" | "kanban";
+type TaskDetailMode = "view" | "edit";
 
 const STATUS_LABELS: Record<TaskStatus, string> = {
   to_do: "To Do",
@@ -71,6 +72,15 @@ function getErrorMessage(error: unknown, fallback: string) {
   if (error instanceof APIError) return error.message;
   if (error instanceof Error) return error.message;
   return fallback;
+}
+
+function getInitials(name: string) {
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("") || "?";
 }
 
 type TaskActionIconName = "comments" | "attachments" | "edit" | "delete";
@@ -132,11 +142,13 @@ export default function TaskManagementSection({
   const [commentsTaskId, setCommentsTaskId] = useState<string | null>(null);
   const [attachmentsTaskId, setAttachmentsTaskId] = useState<string | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [selectedTaskDetails, setSelectedTaskDetails] = useState<Task | null>(null);
+  const [taskDetailMode, setTaskDetailMode] = useState<TaskDetailMode>("view");
   const [taskPendingDelete, setTaskPendingDelete] = useState<Task | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [assigneeToAdd, setAssigneeToAdd] = useState("");
 
-  const loadTasks = async () => {
+  const loadTasks = async (): Promise<Task[]> => {
     setLoading(true);
     setError(null);
 
@@ -152,9 +164,12 @@ export default function TaskManagementSection({
       if (assigneeFilter !== "all") params.assigneeId = assigneeFilter;
 
       const data = await api.tasks.list(projectId, params);
-      setTasks(data.tasks || []);
+      const latestTasks = data.tasks || [];
+      setTasks(latestTasks);
+      return latestTasks;
     } catch (err) {
       setError(getErrorMessage(err, "Failed to load tasks."));
+      return [];
     } finally {
       setLoading(false);
     }
@@ -217,7 +232,7 @@ export default function TaskManagementSection({
     });
   }, [dueDateFilter, tasks]);
 
-  const selectedTask = tasks.find((task) => task.id === selectedTaskId) || null;
+  const selectedTask = selectedTaskDetails || tasks.find((task) => task.id === selectedTaskId) || null;
   const tasksByStatus = useMemo(
     () =>
       filteredTasks.reduce<Record<TaskStatus, Task[]>>(
@@ -235,10 +250,15 @@ export default function TaskManagementSection({
   }, [viewMode]);
 
   useEffect(() => {
-    if (selectedTaskId && !tasks.some((task) => task.id === selectedTaskId)) {
+    if (!selectedTaskId) return;
+
+    const refreshedSelectedTask = tasks.find((task) => task.id === selectedTaskId);
+    if (refreshedSelectedTask) {
+      setSelectedTaskDetails(refreshedSelectedTask);
+    } else if (!selectedTaskDetails) {
       setSelectedTaskId(null);
     }
-  }, [selectedTaskId, tasks]);
+  }, [selectedTaskDetails, selectedTaskId, tasks]);
 
   useEffect(() => {
     if (!selectedTask) return;
@@ -246,6 +266,9 @@ export default function TaskManagementSection({
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setSelectedTaskId(null);
+        setSelectedTaskDetails(null);
+        setTaskDetailMode("view");
+        resetForm();
       }
     };
 
@@ -271,11 +294,7 @@ export default function TaskManagementSection({
     setShowCreateForm(true);
   };
 
-  const openEditForm = (task: Task) => {
-    setActionError(null);
-    setShowCreateForm(false);
-    setEditingTask(task);
-    setAssigneeToAdd("");
+  const setFormFromTask = (task: Task) => {
     setForm({
       title: task.title,
       description: task.description || "",
@@ -321,6 +340,66 @@ export default function TaskManagementSection({
     }
   };
 
+  const refreshTaskInState = async (taskId: string) => {
+    const refreshed = await api.tasks.get(taskId);
+    setSelectedTaskDetails(refreshed.task);
+    setTasks((current) => current.map((task) => (task.id === taskId ? refreshed.task : task)));
+    return refreshed.task;
+  };
+
+  const refreshTasksAndSelectedTask = async (taskId: string) => {
+    const latestTasks = await loadTasks();
+    let updatedTask = latestTasks.find((task) => task.id === taskId) || null;
+
+    if (!updatedTask) {
+      const refreshed = await api.tasks.get(taskId);
+      updatedTask = refreshed.task;
+      setTasks((current) => current.map((task) => (task.id === taskId ? refreshed.task : task)));
+    }
+
+    setSelectedTaskId(taskId);
+    setSelectedTaskDetails(updatedTask);
+    setTaskDetailMode("view");
+    setForm((current) => ({
+      ...current,
+      assigneeIds: updatedTask.assignees.map((assignee) => assignee.userId),
+    }));
+
+    return updatedTask;
+  };
+
+  const handleUpdateTaskInDetails = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!selectedTask) return;
+
+    setActionError(null);
+
+    if (!form.title.trim()) {
+      setActionError("Task title is required.");
+      return;
+    }
+
+    setActionLoading(true);
+
+    try {
+      await api.tasks.update(selectedTask.id, {
+        title: form.title.trim(),
+        description: form.description.trim() || null,
+        due_date: form.dueDate || null,
+        priority: form.priority,
+        status: form.status,
+      });
+      const refreshedTask = await refreshTaskInState(selectedTask.id);
+      setFormFromTask(refreshedTask);
+      await loadTasks();
+      setTaskDetailMode("view");
+    } catch (err) {
+      setActionError(getErrorMessage(err, "Failed to update task."));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleUpdateTask = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!editingTask) return;
@@ -359,7 +438,7 @@ export default function TaskManagementSection({
       await api.tasks.delete(task.id);
       setTaskPendingDelete(null);
       if (selectedTaskId === task.id) {
-        setSelectedTaskId(null);
+        closeTaskDetails();
       }
       await loadTasks();
     } catch (err) {
@@ -411,6 +490,29 @@ export default function TaskManagementSection({
     }
   };
 
+  const handleAddAssigneeFromDetails = async (task: Task, userId: string) => {
+    setActionError(null);
+    setActionLoading(true);
+
+    try {
+      await api.tasks.addAssignee(task.id, userId);
+      const refreshed = await api.tasks.get(task.id);
+
+      setSelectedTaskId(task.id);
+      setSelectedTaskDetails(refreshed.task);
+      setTaskDetailMode("view");
+      setTasks((current) => current.map((item) => (item.id === task.id ? refreshed.task : item)));
+      setForm((current) => ({
+        ...current,
+        assigneeIds: refreshed.task.assignees.map((assignee) => assignee.userId),
+      }));
+    } catch (err) {
+      setActionError(getErrorMessage(err, "Failed to assign member."));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleRemoveAssignee = async (userId: string) => {
     if (!editingTask) return;
 
@@ -426,6 +528,20 @@ export default function TaskManagementSection({
         assigneeIds: refreshed.task.assignees.map((assignee) => assignee.userId),
       }));
       await loadTasks();
+    } catch (err) {
+      setActionError(getErrorMessage(err, "Failed to remove assignee."));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleRemoveAssigneeFromDetails = async (task: Task, userId: string) => {
+    setActionError(null);
+    setActionLoading(true);
+
+    try {
+      await api.tasks.removeAssignee(task.id, userId);
+      await refreshTasksAndSelectedTask(task.id);
     } catch (err) {
       setActionError(getErrorMessage(err, "Failed to remove assignee."));
     } finally {
@@ -453,12 +569,49 @@ export default function TaskManagementSection({
   };
 
   const openTaskDetails = (task: Task) => {
+    setActionError(null);
+    setTaskDetailMode("view");
     setSelectedTaskId(task.id);
+    setSelectedTaskDetails(task);
+  };
+
+  const closeTaskDetails = () => {
+    setSelectedTaskId(null);
+    setSelectedTaskDetails(null);
+    setTaskDetailMode("view");
+    resetForm();
   };
 
   const openTaskEditFromDetails = (task: Task) => {
-    openEditForm(task);
-    setSelectedTaskId(null);
+    setActionError(null);
+    setFormFromTask(task);
+    setTaskDetailMode("edit");
+  };
+
+  const cancelTaskDetailEdit = () => {
+    if (selectedTask) {
+      setFormFromTask(selectedTask);
+    }
+    setActionError(null);
+    setTaskDetailMode("view");
+  };
+
+  const isTaskAssignedToMember = (task: Task, userId: string) => {
+    return task.assignees.some((assignee) => assignee.userId === userId);
+  };
+
+  const getAssigneeForMember = (task: Task, userId: string) => {
+    return task.assignees.find((assignee) => assignee.userId === userId);
+  };
+
+  const handleTaskDetailKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key === "Escape") {
+      if (taskDetailMode === "edit") {
+        cancelTaskDetailEdit();
+      } else {
+        closeTaskDetails();
+      }
+    }
   };
 
   const renderTaskActions = (task: Task) => (
@@ -991,18 +1144,31 @@ export default function TaskManagementSection({
             role="presentation"
             onMouseDown={(event) => {
               if (event.target === event.currentTarget) {
-                setSelectedTaskId(null);
+                closeTaskDetails();
               }
             }}
           >
-            <aside className="task-detail-modal" role="dialog" aria-modal="true" aria-labelledby="task-detail-modal-title">
-              <div className="task-detail-header">
-                <div>
-                  <span className="kanban-project-name">{projectName}</span>
-                  <h3 id="task-detail-modal-title">{selectedTask.title}</h3>
+            <aside
+              className="task-detail-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="task-detail-modal-title"
+              onKeyDown={handleTaskDetailKeyDown}
+            >
+              <div className="task-modal-header">
+                <div className="task-modal-title-group">
+                  <p className="task-modal-project-name">{projectName}</p>
+                  <h2 id="task-detail-modal-title" className="task-modal-title">
+                    {taskDetailMode === "edit" ? "Edit Task" : selectedTask.title}
+                  </h2>
+                  <div className="task-modal-badges">
+                    <Badge variant={selectedTask.status}>{STATUS_LABELS[selectedTask.status]}</Badge>
+                    <Badge variant={selectedTask.priority}>{PRIORITY_LABELS[selectedTask.priority]}</Badge>
+                    <span className={`due-chip due-${getDueState(selectedTask)}`}>{formatDate(selectedTask.dueDate)}</span>
+                  </div>
                 </div>
-                <div className="task-detail-modal-actions">
-                  {isProjectPM && (
+                <div className="task-modal-header-actions">
+                  {isProjectPM && taskDetailMode === "view" && (
                     <button
                       type="button"
                       className="task-action-icon task-action-icon--edit"
@@ -1017,52 +1183,204 @@ export default function TaskManagementSection({
                     type="button"
                     className="task-detail-close"
                     aria-label="Close task details"
-                    onClick={() => setSelectedTaskId(null)}
+                    onClick={closeTaskDetails}
                   >
                     Close
                   </button>
                 </div>
               </div>
-              <div className="task-detail-badges">
-                <Badge variant={selectedTask.status}>{STATUS_LABELS[selectedTask.status]}</Badge>
-                <Badge variant={selectedTask.priority}>{PRIORITY_LABELS[selectedTask.priority]}</Badge>
-                <span className={`due-chip due-${getDueState(selectedTask)}`}>{formatDate(selectedTask.dueDate)}</span>
-              </div>
               <div className="task-detail-modal-body custom-scrollbar">
-                <div className="task-detail-grid">
-                  <section className="task-detail-card task-detail-description-card">
-                    <h4>Description</h4>
-                    <p>{selectedTask.description || "No description provided."}</p>
-                  </section>
-                  <section className="task-detail-card">
-                    <h4>Assignees</h4>
-                    <div className="task-detail-assignees">
-                      {selectedTask.assignees.length === 0 ? (
-                        <span className="muted-text">Unassigned</span>
-                      ) : (
-                        selectedTask.assignees.map((assignee) => (
-                          <div key={assignee.id}>
-                            <UserAvatar name={assignee.userName} size="sm" />
-                            <span>{assignee.userName}</span>
-                          </div>
-                        ))
-                      )}
+                {actionError && (
+                  <div className="alert alert-danger">
+                    <span className="alert-icon">!</span>
+                    <span className="alert-message">{actionError}</span>
+                  </div>
+                )}
+
+                {taskDetailMode === "view" ? (
+                  <>
+                    <div className="task-detail-grid">
+                      <section className="task-detail-card task-detail-description-card">
+                        <h4>Description</h4>
+                        <p>{selectedTask.description || "No description provided."}</p>
+                      </section>
+                      <section className="task-detail-card">
+                        <h4>Properties</h4>
+                        <dl className="task-properties">
+                          <div><dt>Project</dt><dd>{projectName}</dd></div>
+                          <div><dt>Created</dt><dd>{formatDateTime(selectedTask.createdAt)}</dd></div>
+                          <div><dt>Last updated</dt><dd>{formatDateTime(selectedTask.updatedAt)}</dd></div>
+                          <div><dt>Completed</dt><dd>{selectedTask.completedAt ? formatDateTime(selectedTask.completedAt) : "Not completed"}</dd></div>
+                        </dl>
+                      </section>
                     </div>
-                  </section>
-                  <section className="task-detail-card">
-                    <h4>Properties</h4>
-                    <dl className="task-properties">
-                      <div><dt>Project</dt><dd>{projectName}</dd></div>
-                      <div><dt>Created</dt><dd>{formatDateTime(selectedTask.createdAt)}</dd></div>
-                      <div><dt>Last updated</dt><dd>{formatDateTime(selectedTask.updatedAt)}</dd></div>
-                      <div><dt>Completed</dt><dd>{selectedTask.completedAt ? formatDateTime(selectedTask.completedAt) : "Not completed"}</dd></div>
-                    </dl>
-                  </section>
-                </div>
-                <div className="task-detail-sections">
-                  <TaskAttachmentsSection taskId={selectedTask.id} currentUser={currentUser} isProjectPM={isProjectPM} />
-                  <TaskCommentsSection taskId={selectedTask.id} currentUser={currentUser} isProjectPM={isProjectPM} />
-                </div>
+                    <section className="task-assignees-panel">
+                      <div className="task-assignees-panel-header">
+                        <h3>Assignees</h3>
+                      </div>
+
+                      <div className="task-assignee-grid">
+                        {isProjectPM ? (
+                          members.length === 0 ? (
+                            <span className="muted-text">No project members available.</span>
+                          ) : (
+                            members.map((member) => {
+                              const isAssigned = isTaskAssignedToMember(selectedTask, member.userId);
+                              const assignee = getAssigneeForMember(selectedTask, member.userId);
+                              const displayName = assignee?.userName || member.userName;
+
+                              return (
+                                <div
+                                  key={member.id}
+                                  className={`task-assignee-card ${isAssigned ? "is-assigned" : ""}`}
+                                >
+                                  <div className="task-assignee-avatar">
+                                    {getInitials(displayName)}
+                                  </div>
+
+                                  <div className="task-assignee-info">
+                                    <div className="task-assignee-name">
+                                      {displayName}
+                                    </div>
+                                    <div className="task-assignee-email">
+                                      {member.userEmail}
+                                    </div>
+                                  </div>
+
+                                  <div className="task-assignee-actions">
+                                    {isAssigned && (
+                                      <span className="task-assignee-badge">Assigned</span>
+                                    )}
+
+                                    {isAssigned ? (
+                                      <button
+                                        type="button"
+                                        className="task-assignee-btn task-assignee-btn-remove"
+                                        onClick={() => handleRemoveAssigneeFromDetails(selectedTask, member.userId)}
+                                        disabled={actionLoading}
+                                      >
+                                        Remove
+                                      </button>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        className="task-assignee-btn task-assignee-btn-add"
+                                        onClick={() => handleAddAssigneeFromDetails(selectedTask, member.userId)}
+                                        disabled={actionLoading}
+                                      >
+                                        Add
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )
+                        ) : selectedTask.assignees.length === 0 ? (
+                          <span className="muted-text">Unassigned</span>
+                        ) : (
+                          selectedTask.assignees.map((assignee) => (
+                            <div key={assignee.id} className="task-assignee-card is-assigned">
+                              <div className="task-assignee-avatar">
+                                {getInitials(assignee.userName)}
+                              </div>
+
+                              <div className="task-assignee-info">
+                                <div className="task-assignee-name">
+                                  {assignee.userName}
+                                </div>
+                                <div className="task-assignee-email">
+                                  {assignee.userEmail}
+                                </div>
+                              </div>
+
+                              <div className="task-assignee-actions">
+                                <span className="task-assignee-badge">Assigned</span>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </section>
+                    <div className="task-detail-sections">
+                      <TaskAttachmentsSection taskId={selectedTask.id} currentUser={currentUser} isProjectPM={isProjectPM} />
+                      <TaskCommentsSection taskId={selectedTask.id} currentUser={currentUser} isProjectPM={isProjectPM} />
+                    </div>
+                  </>
+                ) : (
+                  <form onSubmit={handleUpdateTaskInDetails} className="task-form task-detail-edit-form">
+                    <div className="form-group">
+                      <label htmlFor="detail-task-title">Title <span className="required">*</span></label>
+                      <input
+                        id="detail-task-title"
+                        value={form.title}
+                        onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
+                        disabled={actionLoading}
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label htmlFor="detail-task-description">Description</label>
+                      <textarea
+                        id="detail-task-description"
+                        rows={4}
+                        value={form.description}
+                        onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
+                        disabled={actionLoading}
+                      />
+                    </div>
+
+                    <div className="form-row task-detail-edit-grid">
+                      <div className="form-group">
+                        <label htmlFor="detail-task-due">Due Date</label>
+                        <input
+                          id="detail-task-due"
+                          type="date"
+                          value={form.dueDate}
+                          onChange={(event) => setForm((current) => ({ ...current, dueDate: event.target.value }))}
+                          disabled={actionLoading}
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label htmlFor="detail-task-priority">Priority</label>
+                        <select
+                          id="detail-task-priority"
+                          value={form.priority}
+                          onChange={(event) => setForm((current) => ({ ...current, priority: event.target.value as TaskPriority }))}
+                          disabled={actionLoading}
+                        >
+                          <option value="low">Low</option>
+                          <option value="medium">Medium</option>
+                          <option value="high">High</option>
+                        </select>
+                      </div>
+
+                      <div className="form-group">
+                        <label htmlFor="detail-task-status">Status</label>
+                        <select
+                          id="detail-task-status"
+                          value={form.status}
+                          onChange={(event) => setForm((current) => ({ ...current, status: event.target.value as TaskStatus }))}
+                          disabled={actionLoading}
+                        >
+                          <option value="to_do">To Do</option>
+                          <option value="in_progress">In Progress</option>
+                          <option value="completed">Completed</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="form-actions task-detail-edit-actions">
+                      <button type="button" className="btn btn-secondary" onClick={cancelTaskDetailEdit} disabled={actionLoading}>
+                        Cancel
+                      </button>
+                      <button type="submit" className="btn btn-primary" disabled={actionLoading}>
+                        {actionLoading ? <span className="spinner"></span> : "Save Task"}
+                      </button>
+                    </div>
+                  </form>
+                )}
               </div>
             </aside>
           </div>
