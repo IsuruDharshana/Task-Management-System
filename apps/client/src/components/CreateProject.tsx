@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { api, APIError } from "../services/api";
 import type { User } from "../services/api";
+import { useSuccessMessage } from "../context/SuccessMessageContext";
 import { useRouter } from "./Router";
 
 interface CreateProjectProps {
@@ -35,6 +36,7 @@ function validateProjectDates(startDate: string, dueDate: string): string | null
 
 export default function CreateProject({ currentUser }: CreateProjectProps) {
   const { navigate } = useRouter();
+  const { showSuccessMessage } = useSuccessMessage();
   
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -83,6 +85,7 @@ export default function CreateProject({ currentUser }: CreateProjectProps) {
       };
 
       const result = await api.projects.create(payload);
+      showSuccessMessage("Project created successfully.");
       // Redirect to the created project details page
       navigate(`/projects/${result.project.id}`);
     } catch (err: any) {

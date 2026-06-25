@@ -4,6 +4,7 @@ import type { Project, Member, User, EligibleMember, Task } from "../services/ap
 import TaskManagementSection from "./TaskManagementSection";
 import { useRouter } from "./Router";
 import { useSocket } from "../context/SocketContext";
+import { useSuccessMessage } from "../context/SuccessMessageContext";
 import { Badge, Button, ConfirmDialog, Modal, SkeletonProjectDetails, UserAvatar } from "./ui";
 import StatIcon from "./ui/StatIcon";
 
@@ -47,6 +48,7 @@ function validateProjectDates(
 export default function ProjectDetails({ projectId, currentUser }: ProjectDetailsProps) {
   const { navigate } = useRouter();
   const { socket } = useSocket();
+  const { showSuccessMessage } = useSuccessMessage();
 
   // Project state
   const [project, setProject] = useState<Project | null>(null);
@@ -249,6 +251,7 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
 
       const result = await api.projects.update(projectId, updatePayload);
       setProject(result.project);
+      showSuccessMessage("Project updated successfully.");
       setIsEditingProject(false);
     } catch (err: any) {
       if (err instanceof APIError) {
@@ -265,6 +268,7 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
     setConfirmingAction(true);
     try {
       await api.projects.delete(projectId);
+      showSuccessMessage("Project deleted successfully.");
       setConfirmAction(null);
       navigate("/projects");
     } catch (err: any) {
@@ -302,6 +306,7 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
       setAddLabel("");
       setAddRole("collaborator");
       setShowAddMemberModal(false);
+      showSuccessMessage("Member added successfully.");
 
       // Refresh members and eligible users
       await refreshMemberManagement();
@@ -333,6 +338,7 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
       });
 
       setEditingMemberId(null);
+      showSuccessMessage("Member updated successfully.");
 
       // Refresh members list
       const membersData = await api.members.list(projectId);
@@ -355,6 +361,7 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
     try {
       await api.members.remove(projectId, memberId);
       setConfirmAction(null);
+      showSuccessMessage("Member removed successfully.");
 
       // Refresh members list
       const membersData = await api.members.list(projectId);

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { api, APIError } from "../services/api";
 import type { AdminUser } from "../services/api";
+import { useSuccessMessage } from "../context/SuccessMessageContext";
 import { Badge, Button, ConfirmDialog, EmptyState, Input, Select, SkeletonTable, UserAvatar } from "./ui";
 import CreateUserModal from "./CreateUserModal";
 
@@ -35,10 +36,10 @@ function formatDateTime(value?: string | null): string {
 }
 
 export default function AdminPanel({ view = "dashboard" }: AdminPanelProps) {
+  const { showSuccessMessage } = useSuccessMessage();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const [search, setSearch] = useState("");
@@ -47,7 +48,6 @@ export default function AdminPanel({ view = "dashboard" }: AdminPanelProps) {
   const [passwordFilter, setPasswordFilter] = useState<PasswordFilter>("all");
 
   const [isCreateUserOpen, setIsCreateUserOpen] = useState(false);
-  const [createdUserPayload, setCreatedUserPayload] = useState<{ user: AdminUser } | null>(null);
 
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
   const [editName, setEditName] = useState("");
@@ -111,9 +111,8 @@ export default function AdminPanel({ view = "dashboard" }: AdminPanelProps) {
     setUsers((currentUsers) => currentUsers.map((user) => (user.id === updatedUser.id ? updatedUser : user)));
   };
 
-  const handleUserCreated = async (user: AdminUser) => {
-    setCreatedUserPayload({ user });
-    setActionMessage(null);
+  const handleUserCreated = async () => {
+    showSuccessMessage("User created successfully.");
     setActionError(null);
     await fetchUsers();
   };
@@ -129,7 +128,6 @@ export default function AdminPanel({ view = "dashboard" }: AdminPanelProps) {
     setEditEmail(user.email);
     setEditRole(user.role);
     setEditError(null);
-    setActionMessage(null);
     setActionError(null);
   };
 
@@ -149,7 +147,7 @@ export default function AdminPanel({ view = "dashboard" }: AdminPanelProps) {
 
       updateUserInList(result.user);
       setEditingUser(null);
-      setActionMessage("User updated successfully.");
+      showSuccessMessage("User updated successfully.");
     } catch (err) {
       setEditError(getErrorMessage(err, "Failed to update user."));
     } finally {
@@ -161,26 +159,25 @@ export default function AdminPanel({ view = "dashboard" }: AdminPanelProps) {
     if (!confirmAction) return;
 
     setConfirmingAction(true);
-    setActionMessage(null);
     setActionError(null);
 
     try {
       if (confirmAction.type === "deactivate") {
         const result = await api.admin.deactivateUser(confirmAction.user.id);
         updateUserInList(result.user);
-        setActionMessage("User deactivated successfully.");
+        showSuccessMessage("Account deactivated successfully.");
       }
 
       if (confirmAction.type === "reactivate") {
         const result = await api.admin.reactivateUser(confirmAction.user.id);
         updateUserInList(result.user);
-        setActionMessage("User reactivated successfully.");
+        showSuccessMessage("Account reactivated successfully.");
       }
 
       if (confirmAction.type === "reset-password") {
         const result = await api.admin.resetUserPassword(confirmAction.user.id);
         updateUserInList(result.user);
-        setActionMessage("Password reset successfully. Reset instructions were sent through the configured email channel.");
+        showSuccessMessage("Password reset successfully.");
       }
 
       setConfirmAction(null);
@@ -323,13 +320,6 @@ export default function AdminPanel({ view = "dashboard" }: AdminPanelProps) {
         </>
       )}
 
-      {createdUserPayload && (
-        <div className="alert alert-success">
-          User created successfully for {createdUserPayload.user.email}. Onboarding details were sent through the configured email channel.
-          <Button type="button" variant="ghost" onClick={() => setCreatedUserPayload(null)}>Dismiss</Button>
-        </div>
-      )}
-
       {view === "users" && <section className="card admin-users-card">
         <div className="section-heading-row">
           <div>
@@ -339,7 +329,6 @@ export default function AdminPanel({ view = "dashboard" }: AdminPanelProps) {
         </div>
 
         {actionError && <div className="alert alert-danger">{actionError}</div>}
-        {actionMessage && <div className="alert alert-success">{actionMessage}</div>}
 
         <div className="admin-user-toolbar">
           <Input id="admin-user-search" type="search" label="Search users" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by name or email" />

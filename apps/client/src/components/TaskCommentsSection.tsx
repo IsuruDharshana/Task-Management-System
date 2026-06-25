@@ -2,6 +2,7 @@
 import { api, APIError } from "../services/api";
 import type { TaskComment, User } from "../services/api";
 import { useSocket } from "../context/SocketContext";
+import { useSuccessMessage } from "../context/SuccessMessageContext";
 import { Button, ConfirmDialog, EmptyState, SkeletonComments, UserAvatar } from "./ui";
 
 interface TaskCommentsSectionProps {
@@ -52,11 +53,11 @@ export default function TaskCommentsSection({
   isProjectPM,
 }: TaskCommentsSectionProps) {
   const { socket } = useSocket();
+  const { showSuccessMessage } = useSuccessMessage();
   const [comments, setComments] = useState<TaskComment[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [newComment, setNewComment] = useState("");
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
@@ -120,7 +121,6 @@ export default function TaskCommentsSection({
   const handleCreate = async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);
-    setSuccess(null);
 
     const commentText = validateComment(newComment);
     if (!commentText) return;
@@ -131,7 +131,7 @@ export default function TaskCommentsSection({
       const data = await api.tasks.createTaskComment(taskId, commentText);
       setComments((current) => [...current, data.comment]);
       setNewComment("");
-      setSuccess("Comment added.");
+      showSuccessMessage("Comment added successfully.");
     } catch (err) {
       setError(getErrorMessage(err, "Failed to add comment."));
     } finally {
@@ -141,7 +141,6 @@ export default function TaskCommentsSection({
 
   const startEdit = (comment: TaskComment) => {
     setError(null);
-    setSuccess(null);
     setEditingCommentId(comment.id);
     setEditText(comment.commentText);
   };
@@ -153,7 +152,6 @@ export default function TaskCommentsSection({
 
   const handleUpdate = async (commentId: string) => {
     setError(null);
-    setSuccess(null);
 
     const commentText = validateComment(editText);
     if (!commentText) return;
@@ -166,7 +164,7 @@ export default function TaskCommentsSection({
         current.map((comment) => (comment.id === commentId ? data.comment : comment))
       );
       cancelEdit();
-      setSuccess("Comment updated.");
+      showSuccessMessage("Comment updated successfully.");
     } catch (err) {
       setError(getErrorMessage(err, "Failed to update comment."));
     } finally {
@@ -176,14 +174,13 @@ export default function TaskCommentsSection({
 
   const handleDelete = async (comment: TaskComment) => {
     setError(null);
-    setSuccess(null);
     setSaving(true);
 
     try {
       await api.tasks.deleteTaskComment(comment.id);
       setComments((current) => current.filter((item) => item.id !== comment.id));
       setCommentPendingDelete(null);
-      setSuccess("Comment deleted.");
+      showSuccessMessage("Comment deleted successfully.");
     } catch (err) {
       setError(getErrorMessage(err, "Failed to delete comment."));
     } finally {
@@ -208,13 +205,6 @@ export default function TaskCommentsSection({
         <div className="alert alert-danger">
           <span className="alert-icon">!</span>
           <span className="alert-message">{error}</span>
-        </div>
-      )}
-
-      {success && (
-        <div className="alert alert-success">
-          <span className="alert-icon">OK</span>
-          <span className="alert-message">{success}</span>
         </div>
       )}
 

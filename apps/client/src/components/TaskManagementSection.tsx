@@ -3,6 +3,7 @@ import { api, APIError } from "../services/api";
 import TaskAttachmentsSection from "./TaskAttachmentsSection";
 import TaskCommentsSection from "./TaskCommentsSection";
 import { useSocket } from "../context/SocketContext";
+import { useSuccessMessage } from "../context/SuccessMessageContext";
 import { Badge, Button, ConfirmDialog, EmptyState, Input, SkeletonKanban, SkeletonTable, UserAvatar } from "./ui";
 import type {
   Member,
@@ -119,6 +120,7 @@ export default function TaskManagementSection({
   isProjectPM,
 }: TaskManagementSectionProps) {
   const { socket, status: socketStatus } = useSocket();
+  const { showSuccessMessage } = useSuccessMessage();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
@@ -331,6 +333,7 @@ export default function TaskManagementSection({
         status: form.status,
         assignee_ids: form.assigneeIds,
       });
+      showSuccessMessage("Task created successfully.");
       closeForms();
       await loadTasks();
     } catch (err) {
@@ -388,6 +391,7 @@ export default function TaskManagementSection({
         priority: form.priority,
         status: form.status,
       });
+      showSuccessMessage("Task updated successfully.");
       const refreshedTask = await refreshTaskInState(selectedTask.id);
       setFormFromTask(refreshedTask);
       await loadTasks();
@@ -420,6 +424,7 @@ export default function TaskManagementSection({
         priority: form.priority,
         status: form.status,
       });
+      showSuccessMessage("Task updated successfully.");
       closeForms();
       await loadTasks();
     } catch (err) {
@@ -435,6 +440,7 @@ export default function TaskManagementSection({
 
     try {
       await api.tasks.delete(task.id);
+      showSuccessMessage("Task deleted successfully.");
       setTaskPendingDelete(null);
       if (selectedTaskId === task.id) {
         closeTaskDetails();
@@ -452,6 +458,7 @@ export default function TaskManagementSection({
 
     try {
       await api.tasks.update(task.id, { status });
+      showSuccessMessage("Task status updated successfully.");
       await loadTasks();
     } catch (err) {
       setActionError(getErrorMessage(err, "Failed to update task status."));
