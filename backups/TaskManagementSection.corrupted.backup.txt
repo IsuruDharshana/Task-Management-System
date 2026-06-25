@@ -609,7 +609,6 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
               {currentUser.role !== "admin" && (
                 <TaskManagementSection
                   projectId={projectId}
-                  projectName={project.name}
                   currentUser={currentUser}
                   members={members}
                   isProjectPM={isProjectPM}

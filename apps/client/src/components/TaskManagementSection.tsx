@@ -348,25 +348,24 @@ export default function TaskManagementSection({
   };
 
   const refreshTasksAndSelectedTask = async (taskId: string) => {
-    const latestTasks = await loadTasks();
-    let updatedTask = latestTasks.find((task) => task.id === taskId) || null;
+  const refreshed = await api.tasks.get(taskId);
+  const updatedTask = refreshed.task;
 
-    if (!updatedTask) {
-      const refreshed = await api.tasks.get(taskId);
-      updatedTask = refreshed.task;
-      setTasks((current) => current.map((task) => (task.id === taskId ? refreshed.task : task)));
-    }
+  setSelectedTaskId(taskId);
+  setSelectedTaskDetails(updatedTask);
+  setTaskDetailMode("view");
 
-    setSelectedTaskId(taskId);
-    setSelectedTaskDetails(updatedTask);
-    setTaskDetailMode("view");
-    setForm((current) => ({
-      ...current,
-      assigneeIds: updatedTask.assignees.map((assignee) => assignee.userId),
-    }));
+  setTasks((current) =>
+    current.map((task) => (task.id === taskId ? updatedTask : task))
+  );
 
-    return updatedTask;
-  };
+  setForm((current) => ({
+    ...current,
+    assigneeIds: updatedTask.assignees.map((assignee) => assignee.userId),
+  }));
+
+  return updatedTask;
+};
 
   const handleUpdateTaskInDetails = async (event: React.FormEvent) => {
     event.preventDefault();
