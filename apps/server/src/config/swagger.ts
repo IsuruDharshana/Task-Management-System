@@ -4,6 +4,7 @@ import swaggerJsdoc from "swagger-jsdoc";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const swaggerPath = (targetPath: string) => targetPath.replace(/\\/g, "/");
 
 const options: swaggerJsdoc.Options = {
   definition: {
@@ -212,12 +213,21 @@ const options: swaggerJsdoc.Options = {
     security: [{ cookieAuth: [] }, { bearerAuth: [] }],
   },
   apis: [
-    "./src/app.ts",
-    "./src/routes/*.ts",
-    "./src/controllers/*.ts",
-    "./dist/app.js",
-    "./dist/routes/*.js",
-    "./dist/controllers/*.js",
+    swaggerPath(path.resolve(process.cwd(), "src/app.ts")),
+    swaggerPath(path.resolve(process.cwd(), "src/routes/**/*.ts")),
+    swaggerPath(path.resolve(process.cwd(), "src/controllers/**/*.ts")),
+
+    swaggerPath(path.resolve(process.cwd(), "dist/app.js")),
+    swaggerPath(path.resolve(process.cwd(), "dist/routes/**/*.js")),
+    swaggerPath(path.resolve(process.cwd(), "dist/controllers/**/*.js")),
+
+    swaggerPath(path.join(__dirname, "../app.ts")),
+    swaggerPath(path.join(__dirname, "../routes/**/*.ts")),
+    swaggerPath(path.join(__dirname, "../controllers/**/*.ts")),
+
+    swaggerPath(path.join(__dirname, "../app.js")),
+    swaggerPath(path.join(__dirname, "../routes/**/*.js")),
+    swaggerPath(path.join(__dirname, "../controllers/**/*.js")),
   ],
 };
 
