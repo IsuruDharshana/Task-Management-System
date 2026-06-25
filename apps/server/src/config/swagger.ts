@@ -28,11 +28,12 @@ const options: swaggerJsdoc.Options = {
   ],
 
     servers: [
-      {
-        url: process.env.API_PUBLIC_URL || "http://localhost:5000/api",
-        description: process.env.NODE_ENV === "production" ? "Production" : "Local",
-      },
-    ],
+  {
+    url: process.env.API_PUBLIC_URL || "http://localhost:5000/api",
+    description:
+      process.env.NODE_ENV === "production" ? "Production" : "Local",
+  },
+],
     components: {
       schemas: {
         User: {
