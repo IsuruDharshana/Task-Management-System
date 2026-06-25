@@ -21,7 +21,7 @@ router.use(requireRoles("admin"));
  * @openapi
  * /admin/users:
  *   get:
- *     tags: [Admin — Users]
+ *     tags: [Admin Users]
  *     summary: List all users (admin only)
  *     parameters:
  *       - in: query
@@ -67,7 +67,7 @@ router.get("/", asyncHandler(listAdminUsers));
  * @openapi
  * /admin/users/{id}:
  *   get:
- *     tags: [Admin — Users]
+ *     tags: [Admin Users]
  *     summary: Get a single user by ID (admin only)
  *     parameters:
  *       - in: path
@@ -105,7 +105,7 @@ router.get("/:id", asyncHandler(getAdminUser));
  * @openapi
  * /admin/users:
  *   post:
- *     tags: [Admin — Users]
+ *     tags: [Admin Users]
  *     summary: Create a new user (admin only)
  *     requestBody:
  *       required: true
@@ -154,7 +154,7 @@ router.post("/", asyncHandler(createAdminUser));
  * @openapi
  * /admin/users/{id}:
  *   patch:
- *     tags: [Admin — Users]
+ *     tags: [Admin Users]
  *     summary: Update a user's name, email, or role (admin only)
  *     parameters:
  *       - in: path
@@ -209,7 +209,7 @@ router.patch("/:id", asyncHandler(updateAdminUser));
  * @openapi
  * /admin/users/{id}/deactivate:
  *   patch:
- *     tags: [Admin — Users]
+ *     tags: [Admin Users]
  *     summary: Deactivate a user account (admin only)
  *     parameters:
  *       - in: path
@@ -247,7 +247,7 @@ router.patch("/:id/deactivate", asyncHandler(deactivateAdminUser));
  * @openapi
  * /admin/users/{id}/reactivate:
  *   patch:
- *     tags: [Admin — Users]
+ *     tags: [Admin Users]
  *     summary: Reactivate a deactivated user account (admin only)
  *     parameters:
  *       - in: path
@@ -285,7 +285,7 @@ router.patch("/:id/reactivate", asyncHandler(reactivateAdminUser));
  * @openapi
  * /admin/users/{id}/reset-password:
  *   patch:
- *     tags: [Admin — Users]
+ *     tags: [Admin Users]
  *     summary: Reset a user's password to a new temporary password (admin only)
  *     parameters:
  *       - in: path

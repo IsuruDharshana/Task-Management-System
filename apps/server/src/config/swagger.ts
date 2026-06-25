@@ -1,4 +1,9 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import swaggerJsdoc from "swagger-jsdoc";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const options: swaggerJsdoc.Options = {
   definition: {
@@ -7,9 +12,26 @@ const options: swaggerJsdoc.Options = {
       title: "Task Management System API",
       version: "1.0.0",
     },
+    
+    tags: [
+    { name: "Health", description: "API and database health check endpoints" },
+    { name: "Auth", description: "Authentication and session management endpoints" },
+    { name: "Admin Users", description: "Admin-only user management endpoints" },
+    { name: "Projects", description: "Project management endpoints" },
+    { name: "Members", description: "Project member management endpoints" },
+    { name: "Tasks", description: "Task management endpoints" },
+    { name: "Comments", description: "Task comment endpoints" },
+    { name: "Attachments", description: "Task attachment endpoints" },
+    { name: "Notifications", description: "Notification endpoints" },
+    { name: "Activity Logs", description: "Audit/activity log endpoints" },
+    { name: "Dashboard", description: "Dashboard summary endpoints" },
+  ],
+
     servers: [
-      { url: "http://localhost:5000/api", description: "Local" },
-      { url: "https://task-management-system-l6hq.onrender.com/api", description: "Production" },
+      {
+        url: process.env.API_PUBLIC_URL || "http://localhost:5000/api",
+        description: process.env.NODE_ENV === "production" ? "Production" : "Local",
+      },
     ],
     components: {
       schemas: {
@@ -188,7 +210,14 @@ const options: swaggerJsdoc.Options = {
     },
     security: [{ cookieAuth: [] }, { bearerAuth: [] }],
   },
-  apis: ["./src/routes/*.ts", "./src/app.ts"],
+  apis: [
+    "./src/app.ts",
+    "./src/routes/*.ts",
+    "./src/controllers/*.ts",
+    "./dist/app.js",
+    "./dist/routes/*.js",
+    "./dist/controllers/*.js",
+  ],
 };
 
 export const swaggerSpec = swaggerJsdoc(options);
