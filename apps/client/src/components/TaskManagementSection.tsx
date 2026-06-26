@@ -1,4 +1,17 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { api, APIError } from "../services/api";
 import TaskAttachmentsSection from "./TaskAttachmentsSection";
 import TaskCommentsSection from "./TaskCommentsSection";
@@ -22,6 +35,7 @@ interface TaskManagementSectionProps {
   currentUser: User;
   members: Member[];
   isProjectPM: boolean;
+  onTasksChanged?: () => void | Promise<void>;
 }
 
 type FilterStatus = "all" | TaskStatus;
@@ -35,6 +49,8 @@ const STATUS_LABELS: Record<TaskStatus, string> = {
   in_progress: "In Progress",
   completed: "Completed",
 };
+
+const TASK_STATUSES = ["to_do", "in_progress", "completed"] as const;
 
 const PRIORITY_LABELS: Record<TaskPriority, string> = {
   low: "Low",
@@ -84,6 +100,15 @@ function getInitials(name: string) {
     .join("") || "?";
 }
 
+function getDueState(task: Task): "due_soon" | "overdue" | "default" {
+  if (!task.dueDate || task.status === "completed") return "default";
+  const due = new Date(task.dueDate).getTime();
+  const now = Date.now();
+  if (due < now) return "overdue";
+  if (due <= now + 7 * 24 * 60 * 60 * 1000) return "due_soon";
+  return "default";
+}
+
 type TaskActionIconName = "comments" | "attachments" | "edit" | "delete";
 
 function TaskActionIcon({ name }: { name: TaskActionIconName }) {
@@ -112,15 +137,102 @@ function TaskActionIcon({ name }: { name: TaskActionIconName }) {
   }
 }
 
+function KanbanColumn({
+  status,
+  taskCount,
+  children,
+}: {
+  status: TaskStatus;
+  taskCount: number;
+  children: React.ReactNode;
+}) {
+  const { isOver, setNodeRef } = useDroppable({ id: status });
+
+  return (
+    <section ref={setNodeRef} className={`kanban-column ${isOver ? "kanban-column-over" : ""}`}>
+      <div className="kanban-column-header">
+        <h3>{STATUS_LABELS[status]}</h3>
+        <span>{taskCount}</span>
+      </div>
+      <div className="kanban-task-list">{children}</div>
+    </section>
+  );
+}
+
+function DraggableKanbanTask({
+  task,
+  projectName,
+  canChangeStatus,
+  onOpenTaskDetails,
+}: {
+  task: Task;
+  projectName: string;
+  canChangeStatus: boolean;
+  onOpenTaskDetails: (task: Task) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: task.id,
+    data: { status: task.status },
+    disabled: !canChangeStatus,
+  });
+  const style: React.CSSProperties = {
+    transform: CSS.Translate.toString(transform),
+  };
+
+  return (
+    <button
+      ref={setNodeRef}
+      type="button"
+      className={`kanban-task-card priority-${task.priority} ${isDragging ? "kanban-task-card-dragging" : ""}`}
+      style={style}
+      onClick={() => {
+        if (!isDragging) {
+          onOpenTaskDetails(task);
+        }
+      }}
+      {...listeners}
+      {...attributes}
+    >
+      <div className="kanban-task-topline">
+        <Badge variant={task.priority}>{PRIORITY_LABELS[task.priority]}</Badge>
+        <span className={`due-chip due-${getDueState(task)}`}>{formatDate(task.dueDate)}</span>
+      </div>
+      <span className="kanban-project-name">{projectName}</span>
+      <h4>{task.title}</h4>
+      {task.description && <p>{task.description}</p>}
+      <div className="kanban-task-footer">
+        <div className="task-assignees-cell avatar-stack">
+          {task.assignees.length === 0 ? (
+            <span className="muted-text">Unassigned</span>
+          ) : (
+            task.assignees.map((assignee) => (
+              <UserAvatar key={assignee.id} name={assignee.userName} size="sm" />
+            ))
+          )}
+        </div>
+      </div>
+    </button>
+  );
+}
+
 export default function TaskManagementSection({
   projectId,
   projectName,
   currentUser,
   members,
   isProjectPM,
+  onTasksChanged,
 }: TaskManagementSectionProps) {
   const { socket, status: socketStatus } = useSocket();
   const { showSuccessMessage } = useSuccessMessage();
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 6 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
@@ -453,16 +565,52 @@ export default function TaskManagementSection({
     }
   };
 
-  const handleCollaboratorStatusChange = async (task: Task, status: TaskStatus) => {
+  const handleTaskStatusChange = async (
+    task: Task,
+    status: TaskStatus,
+    options: { optimistic?: boolean } = {}
+  ) => {
+    const previousTasks = tasks;
     setActionError(null);
+
+    if (options.optimistic) {
+      setTasks((current) =>
+        current.map((currentTask) => (currentTask.id === task.id ? { ...currentTask, status } : currentTask))
+      );
+    }
 
     try {
       await api.tasks.update(task.id, { status });
       showSuccessMessage("Task status updated successfully.");
       await loadTasks();
+      await onTasksChanged?.();
     } catch (err) {
+      if (options.optimistic) {
+        setTasks(previousTasks);
+        await onTasksChanged?.();
+      }
       setActionError(getErrorMessage(err, "Failed to update task status."));
     }
+  };
+
+  const canChangeTaskStatus = (task: Task) =>
+    isProjectPM || task.assignees.some((assignee) => assignee.userId === currentUser.id);
+
+  const handleKanbanDragEnd = async (event: DragEndEvent) => {
+    const taskId = String(event.active.id);
+    const targetStatus = event.over?.id as TaskStatus | undefined;
+
+    if (!targetStatus || !TASK_STATUSES.includes(targetStatus)) {
+      return;
+    }
+
+    const draggedTask = tasks.find((task) => task.id === taskId);
+
+    if (!draggedTask || draggedTask.status === targetStatus || !canChangeTaskStatus(draggedTask)) {
+      return;
+    }
+
+    await handleTaskStatusChange(draggedTask, targetStatus, { optimistic: true });
   };
 
   const toggleComments = (taskId: string) => {
@@ -558,15 +706,6 @@ export default function TaskManagementSection({
   const availableAssignees = editingTask
     ? members.filter((member) => !editingTask.assignees.some((assignee) => assignee.userId === member.userId))
     : [];
-
-  const getDueState = (task: Task): "due_soon" | "overdue" | "default" => {
-    if (!task.dueDate || task.status === "completed") return "default";
-    const due = new Date(task.dueDate).getTime();
-    const now = Date.now();
-    if (due < now) return "overdue";
-    if (due <= now + 7 * 24 * 60 * 60 * 1000) return "due_soon";
-    return "default";
-  };
 
   const getSocketLabel = () => {
     if (socketStatus === "connected") return "Live";
@@ -989,7 +1128,7 @@ export default function TaskManagementSection({
                             className="task-status-select"
                             value={task.status}
                             onClick={(event) => event.stopPropagation()}
-                            onChange={(event) => handleCollaboratorStatusChange(task, event.target.value as TaskStatus)}
+                            onChange={(event) => handleTaskStatusChange(task, event.target.value as TaskStatus)}
                           >
                             <option value="to_do">To Do</option>
                             <option value="in_progress">In Progress</option>
@@ -1070,7 +1209,7 @@ export default function TaskManagementSection({
                           className="task-status-select"
                           value={task.status}
                           onClick={(event) => event.stopPropagation()}
-                          onChange={(event) => handleCollaboratorStatusChange(task, event.target.value as TaskStatus)}
+                          onChange={(event) => handleTaskStatusChange(task, event.target.value as TaskStatus)}
                         >
                           <option value="to_do">To Do</option>
                           <option value="in_progress">In Progress</option>
@@ -1098,49 +1237,31 @@ export default function TaskManagementSection({
           </div>
           </>
           ) : (
-            <div className="kanban-board project-task-kanban custom-scrollbar" aria-label="Task Kanban board">
-              {(["to_do", "in_progress", "completed"] as TaskStatus[]).map((status) => (
-                <section key={status} className="kanban-column">
-                  <div className="kanban-column-header">
-                    <h3>{STATUS_LABELS[status]}</h3>
-                    <span>{tasksByStatus[status].length}</span>
-                  </div>
-                  <div className="kanban-task-list">
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleKanbanDragEnd}
+            >
+              <div className="kanban-board project-task-kanban custom-scrollbar" aria-label="Task Kanban board">
+                {TASK_STATUSES.map((status) => (
+                  <KanbanColumn key={status} status={status} taskCount={tasksByStatus[status].length}>
                     {tasksByStatus[status].length === 0 ? (
                       <div className="kanban-empty-state">No tasks</div>
                     ) : (
                       tasksByStatus[status].map((task) => (
-                        <button
+                        <DraggableKanbanTask
                           key={task.id}
-                          type="button"
-                          className={`kanban-task-card priority-${task.priority}`}
-                          onClick={() => openTaskDetails(task)}
-                        >
-                          <div className="kanban-task-topline">
-                            <Badge variant={task.priority}>{PRIORITY_LABELS[task.priority]}</Badge>
-                            <span className={`due-chip due-${getDueState(task)}`}>{formatDate(task.dueDate)}</span>
-                          </div>
-                          <span className="kanban-project-name">{projectName}</span>
-                          <h4>{task.title}</h4>
-                          {task.description && <p>{task.description}</p>}
-                          <div className="kanban-task-footer">
-                            <div className="task-assignees-cell avatar-stack">
-                              {task.assignees.length === 0 ? (
-                                <span className="muted-text">Unassigned</span>
-                              ) : (
-                                task.assignees.map((assignee) => (
-                                  <UserAvatar key={assignee.id} name={assignee.userName} size="sm" />
-                                ))
-                              )}
-                            </div>
-                          </div>
-                        </button>
+                          task={task}
+                          projectName={projectName}
+                          canChangeStatus={canChangeTaskStatus(task)}
+                          onOpenTaskDetails={openTaskDetails}
+                        />
                       ))
                     )}
-                  </div>
-                </section>
-              ))}
-            </div>
+                  </KanbanColumn>
+                ))}
+              </div>
+            </DndContext>
           )
         )}
 

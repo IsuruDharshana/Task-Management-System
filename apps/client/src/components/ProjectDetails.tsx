@@ -620,6 +620,7 @@ export default function ProjectDetails({ projectId, currentUser }: ProjectDetail
                   currentUser={currentUser}
                   members={members}
                   isProjectPM={isProjectPM}
+                  onTasksChanged={() => fetchData({ background: true })}
                 />
               )}
             </div>
