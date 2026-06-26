@@ -325,11 +325,7 @@ async function getActiveTask(taskId: string): Promise<TaskRow> {
 }
 
 async function canManageProject(projectId: string, userId: string): Promise<boolean> {
-  const project = await getActiveProject(projectId);
-
-  if (project.created_by === userId) {
-    return true;
-  }
+  await getActiveProject(projectId);
 
   const { data, error } = await supabaseAdmin
     .from("project_members")
@@ -348,11 +344,7 @@ async function canManageProject(projectId: string, userId: string): Promise<bool
 }
 
 async function getProjectAccessRole(projectId: string, userId: string): Promise<ProjectAccessRole | null> {
-  const project = await getActiveProject(projectId);
-
-  if (project.created_by === userId) {
-    return "project_manager";
-  }
+  await getActiveProject(projectId);
 
   const { data, error } = await supabaseAdmin
     .from("project_members")

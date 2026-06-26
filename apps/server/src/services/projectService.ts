@@ -189,11 +189,7 @@ export async function isProjectManagerForProject(projectId: string, userId: stri
 }
 
 export async function requireProjectManagerForProject(projectId: string, userId: string): Promise<void> {
-  const project = await getActiveProject(projectId);
-
-  if (project.created_by === userId) {
-    return;
-  }
+  await getActiveProject(projectId);
 
   const isPM = await isProjectManagerForProject(projectId, userId);
 
@@ -452,7 +448,7 @@ export async function listProjects(user: AuthUser): Promise<ProjectDTO[]> {
     throw new AppError(500, "DATABASE_ERROR", "Failed to load projects.");
   }
 
-  if ((!memberships || memberships.length === 0) && user.role !== "project_manager") {
+  if (!memberships || memberships.length === 0) {
     return [];
   }
 
@@ -462,22 +458,6 @@ export async function listProjects(user: AuthUser): Promise<ProjectDTO[]> {
       membership.project_id,
       membership.project_role === "project_manager" ? "project_manager" : "collaborator"
     );
-  }
-
-  if (user.role === "project_manager") {
-    const { data: createdProjects, error: createdProjectError } = await supabaseAdmin
-      .from("projects")
-      .select("id")
-      .eq("created_by", user.id)
-      .is("deleted_at", null);
-
-    if (createdProjectError) {
-      throw new AppError(500, "DATABASE_ERROR", "Failed to load projects.");
-    }
-
-    for (const project of createdProjects ?? []) {
-      projectRolesById.set(project.id, "project_manager");
-    }
   }
 
   const projectIds = [...projectRolesById.keys()];
@@ -500,7 +480,7 @@ export async function listProjects(user: AuthUser): Promise<ProjectDTO[]> {
   return ((data ?? []) as ProjectRow[]).map((project) =>
     mapProject(
       project,
-      project.created_by === user.id ? "project_manager" : projectRolesById.get(project.id) ?? null
+      projectRolesById.get(project.id) ?? null
     )
   );
 }
@@ -510,7 +490,7 @@ export async function getProject(projectId: string, user: AuthUser): Promise<Pro
 
   const project = await getActiveProject(projectId);
 
-  const isMember = project.created_by === user.id || (await isProjectMember(projectId, user.id));
+  const isMember = await isProjectMember(projectId, user.id);
 
   if (!isMember) {
     throw new AppError(404, "PROJECT_NOT_FOUND", "Project not found.");
@@ -518,11 +498,7 @@ export async function getProject(projectId: string, user: AuthUser): Promise<Pro
 
   return mapProject(
     project,
-    project.created_by === user.id
-      ? "project_manager"
-      : (await isProjectManagerForProject(projectId, user.id))
-        ? "project_manager"
-        : "collaborator"
+    (await isProjectManagerForProject(projectId, user.id)) ? "project_manager" : "collaborator"
   );
 }
 
@@ -672,7 +648,7 @@ export async function listMembers(projectId: string, user: AuthUser): Promise<Me
   requireNonAdmin(user);
   const project = await getActiveProject(projectId);
 
-  const isMember = project.created_by === user.id || (await isProjectMember(projectId, user.id));
+  const isMember = await isProjectMember(projectId, user.id);
 
   if (!isMember) {
     throw new AppError(404, "PROJECT_NOT_FOUND", "Project not found.");
