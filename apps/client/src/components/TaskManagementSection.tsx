@@ -162,18 +162,15 @@ function KanbanColumn({
 function DraggableKanbanTask({
   task,
   projectName,
-  canChangeStatus,
   onOpenTaskDetails,
 }: {
   task: Task;
   projectName: string;
-  canChangeStatus: boolean;
   onOpenTaskDetails: (task: Task) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: task.id,
     data: { status: task.status },
-    disabled: !canChangeStatus,
   });
   const style: React.CSSProperties = {
     transform: CSS.Translate.toString(transform),
@@ -593,9 +590,6 @@ export default function TaskManagementSection({
     }
   };
 
-  const canChangeTaskStatus = (task: Task) =>
-    isProjectPM || task.assignees.some((assignee) => assignee.userId === currentUser.id);
-
   const handleKanbanDragEnd = async (event: DragEndEvent) => {
     const taskId = String(event.active.id);
     const targetStatus = event.over?.id as TaskStatus | undefined;
@@ -606,7 +600,7 @@ export default function TaskManagementSection({
 
     const draggedTask = tasks.find((task) => task.id === taskId);
 
-    if (!draggedTask || draggedTask.status === targetStatus || !canChangeTaskStatus(draggedTask)) {
+    if (!draggedTask || draggedTask.status === targetStatus) {
       return;
     }
 
@@ -1253,7 +1247,6 @@ export default function TaskManagementSection({
                           key={task.id}
                           task={task}
                           projectName={projectName}
-                          canChangeStatus={canChangeTaskStatus(task)}
                           onOpenTaskDetails={openTaskDetails}
                         />
                       ))
