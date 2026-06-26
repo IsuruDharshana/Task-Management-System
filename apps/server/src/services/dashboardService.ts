@@ -74,25 +74,9 @@ async function getActiveProjectIds(user: AuthUser): Promise<string[]> {
     throw new AppError(500, "DATABASE_ERROR", "Failed to load dashboard projects.");
   }
 
-  const candidateProjectIds = (memberships ?? []).map(
+  const projectIds = unique((memberships ?? []).map(
     (membership: ProjectMemberProjectRow) => membership.project_id
-  );
-
-  if (user.role === "project_manager") {
-    const { data: createdProjects, error: projectError } = await supabaseAdmin
-      .from("projects")
-      .select("id")
-      .eq("created_by", user.id)
-      .is("deleted_at", null);
-
-    if (projectError) {
-      throw new AppError(500, "DATABASE_ERROR", "Failed to load dashboard projects.");
-    }
-
-    candidateProjectIds.push(...((createdProjects ?? []) as ProjectIdRow[]).map((project) => project.id));
-  }
-
-  const projectIds = unique(candidateProjectIds);
+  ));
 
   if (projectIds.length === 0) {
     return [];
@@ -129,22 +113,6 @@ async function getActiveProjectRoles(user: AuthUser): Promise<Map<string, "proje
       membership.project_id,
       membership.project_role === "project_manager" ? "project_manager" : "collaborator"
     );
-  }
-
-  if (user.role === "project_manager") {
-    const { data: createdProjects, error: projectError } = await supabaseAdmin
-      .from("projects")
-      .select("id")
-      .eq("created_by", user.id)
-      .is("deleted_at", null);
-
-    if (projectError) {
-      throw new AppError(500, "DATABASE_ERROR", "Failed to load dashboard projects.");
-    }
-
-    for (const project of (createdProjects ?? []) as ProjectIdRow[]) {
-      rolesByProjectId.set(project.id, "project_manager");
-    }
   }
 
   const projectIds = [...rolesByProjectId.keys()];

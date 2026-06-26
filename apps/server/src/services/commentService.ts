@@ -180,11 +180,7 @@ async function requireActiveProjectMembership(projectId: string, userId: string)
 }
 
 async function isProjectManagerForProject(projectId: string, userId: string): Promise<boolean> {
-  const project = await getActiveProject(projectId);
-
-  if (project.created_by === userId) {
-    return true;
-  }
+  await getActiveProject(projectId);
 
   const { data, error } = await supabaseAdmin
     .from("project_members")

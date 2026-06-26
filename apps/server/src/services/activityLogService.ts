@@ -18,6 +18,10 @@ interface ProjectLookupRow {
   name: string;
 }
 
+interface ProjectIdRow {
+  id: string;
+}
+
 interface TaskLookupRow {
   id: string;
   title: string;
@@ -260,25 +264,23 @@ async function getVisibleProjectIds(user: AuthUser): Promise<string[]> {
     throw new AppError(500, "DATABASE_ERROR", "Failed to load visible projects.");
   }
 
-  const projectIds = new Set((data ?? []).map((membership) => membership.project_id));
+  const projectIds = [...new Set((data ?? []).map((membership) => membership.project_id))];
 
-  if (user.role === "project_manager") {
-    const { data: createdProjects, error: projectError } = await supabaseAdmin
-      .from("projects")
-      .select("id")
-      .eq("created_by", user.id)
-      .is("deleted_at", null);
-
-    if (projectError) {
-      throw new AppError(500, "DATABASE_ERROR", "Failed to load managed projects.");
-    }
-
-    for (const project of createdProjects ?? []) {
-      projectIds.add(project.id);
-    }
+  if (projectIds.length === 0) {
+    return [];
   }
 
-  return [...projectIds];
+  const { data: activeProjects, error: projectError } = await supabaseAdmin
+    .from("projects")
+    .select("id")
+    .in("id", projectIds)
+    .is("deleted_at", null);
+
+  if (projectError) {
+    throw new AppError(500, "DATABASE_ERROR", "Failed to load visible projects.");
+  }
+
+  return ((activeProjects ?? []) as ProjectIdRow[]).map((project) => project.id);
 }
 
 function canSeeLog(row: ActivityLogRow, user: AuthUser, visibleProjectIds: Set<string>): boolean {

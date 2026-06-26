@@ -192,7 +192,7 @@ export default function Dashboard({ currentUser }: DashboardProps) {
       : [
           { label: "Assigned Tasks", value: assignedTasks.length },
           { label: "In Progress", value: assignedTasks.filter((task) => task.status === "in_progress").length },
-          { label: "Due Soon", value: assignedTasks.filter((task) => isDueSoon(task.dueDate)).length },
+          { label: "Due Soon", value: assignedTasks.filter((task) => task.status !== "completed" && isDueSoon(task.dueDate)).length },
           { label: "Completed", value: assignedTasks.filter((task) => task.status === "completed").length },
         ];
 
