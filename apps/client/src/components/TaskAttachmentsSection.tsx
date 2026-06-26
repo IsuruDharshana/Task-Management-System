@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { api, APIError } from "../services/api";
 import type { TaskAttachment, User } from "../services/api";
 import { useSocket } from "../context/SocketContext";
+import { useSuccessMessage } from "../context/SuccessMessageContext";
 import { Button, ConfirmDialog, EmptyState, SkeletonList, UserAvatar } from "./ui";
 
 interface TaskAttachmentsSectionProps {
@@ -61,6 +62,7 @@ export default function TaskAttachmentsSection({
   isProjectPM,
 }: TaskAttachmentsSectionProps) {
   const { socket } = useSocket();
+  const { showSuccessMessage } = useSuccessMessage();
   const [attachments, setAttachments] = useState<TaskAttachment[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [displayName, setDisplayName] = useState("");
@@ -68,7 +70,6 @@ export default function TaskAttachmentsSection({
   const [saving, setSaving] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [attachmentPendingDelete, setAttachmentPendingDelete] = useState<TaskAttachment | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -133,14 +134,12 @@ export default function TaskAttachmentsSection({
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setError(null);
-    setSuccess(null);
     setSelectedFile(event.target.files?.[0] ?? null);
   };
 
   const handleUpload = async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);
-    setSuccess(null);
 
     const file = selectedFile;
     if (!validateFile(file)) return;
@@ -153,7 +152,7 @@ export default function TaskAttachmentsSection({
       setSelectedFile(null);
       setDisplayName("");
       if (fileInputRef.current) fileInputRef.current.value = "";
-      setSuccess("Attachment uploaded.");
+      showSuccessMessage("Attachment uploaded successfully.");
     } catch (err) {
       setError(getErrorMessage(err, "Failed to upload attachment."));
     } finally {
@@ -163,7 +162,6 @@ export default function TaskAttachmentsSection({
 
   const handleDownload = async (attachment: TaskAttachment) => {
     setError(null);
-    setSuccess(null);
     setDownloadingId(attachment.id);
 
     try {
@@ -178,14 +176,13 @@ export default function TaskAttachmentsSection({
 
   const handleDelete = async (attachment: TaskAttachment) => {
     setError(null);
-    setSuccess(null);
     setSaving(true);
 
     try {
       await api.tasks.deleteTaskAttachment(attachment.id);
       setAttachments((current) => current.filter((item) => item.id !== attachment.id));
       setAttachmentPendingDelete(null);
-      setSuccess("Attachment deleted.");
+      showSuccessMessage("Attachment deleted successfully.");
     } catch (err) {
       setError(getErrorMessage(err, "Failed to delete attachment."));
     } finally {
@@ -210,13 +207,6 @@ export default function TaskAttachmentsSection({
         <div className="alert alert-danger">
           <span className="alert-icon">!</span>
           <span className="alert-message">{error}</span>
-        </div>
-      )}
-
-      {success && (
-        <div className="alert alert-success">
-          <span className="alert-icon">OK</span>
-          <span className="alert-message">{success}</span>
         </div>
       )}
 

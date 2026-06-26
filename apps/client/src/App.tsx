@@ -14,6 +14,7 @@ import SettingsPage from "./components/SettingsPage";
 import NotificationToastContainer from "./components/NotificationToastContainer";
 import { SocketProvider } from "./context/SocketContext";
 import { NotificationProvider } from "./context/NotificationContext";
+import { SuccessMessageProvider } from "./context/SuccessMessageContext";
 import { AppLayout, ErrorState, SkeletonAppShell } from "./components/ui";
 import "./App.css";
 
@@ -213,7 +214,9 @@ function AppContent() {
 export default function App() {
   return (
     <RouterProvider>
-      <AppContent />
+      <SuccessMessageProvider>
+        <AppContent />
+      </SuccessMessageProvider>
     </RouterProvider>
   );
 }

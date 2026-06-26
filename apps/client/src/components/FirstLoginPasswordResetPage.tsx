@@ -23,7 +23,7 @@ export default function FirstLoginPasswordResetPage({
 
         <ChangePasswordForm
           submitLabel="Update Password"
-          successMessage="Password updated successfully. Redirecting..."
+          successMessage="Password reset successfully."
           onPasswordChanged={onPasswordChanged}
         />
 

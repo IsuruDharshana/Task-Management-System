@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { api, APIError } from "../services/api";
 import type { User } from "../services/api";
+import { useSuccessMessage } from "../context/SuccessMessageContext";
 import { Button, Input } from "./ui";
 
 interface ChangePasswordFormProps {
@@ -56,11 +57,11 @@ export default function ChangePasswordForm({
   successMessage = "Password changed successfully.",
   onPasswordChanged,
 }: ChangePasswordFormProps) {
+  const { showSuccessMessage } = useSuccessMessage();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [visibleFields, setVisibleFields] = useState<Record<PasswordFieldName, boolean>>({
     current: false,
@@ -78,7 +79,6 @@ export default function ChangePasswordForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setSuccess(null);
 
     const policyError = getPasswordPolicyError(newPassword);
     if (policyError) {
@@ -98,7 +98,7 @@ export default function ChangePasswordForm({
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-      setSuccess(successMessage);
+      showSuccessMessage(successMessage);
     } catch (err: any) {
       if (err instanceof APIError) {
         setError(err.message);
@@ -118,13 +118,6 @@ export default function ChangePasswordForm({
           <span className="alert-message">{error}</span>
         </div>
       )}
-      {success && (
-        <div className="alert alert-success">
-          <span className="alert-icon">!</span>
-          <span className="alert-message">{success}</span>
-        </div>
-      )}
-
       <Input
         id="current-password"
         type={visibleFields.current ? "text" : "password"}
